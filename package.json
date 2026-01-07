@@ -1,6 +1,6 @@
 {
   "name": "local-share",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "本地文件共享桌面应用",
   "main": "src/main.js",
   "scripts": {
