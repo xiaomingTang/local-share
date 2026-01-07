@@ -32,6 +32,7 @@ class LocalShareApp {
       this.createWindow();
       this.setupTray();
       this.setupIPC();
+      this.handleCommandLineShare();
     });
 
     app.on("window-all-closed", () => {
@@ -50,8 +51,8 @@ class LocalShareApp {
 
   private createWindow() {
     this.mainWindow = new BrowserWindow({
-      width: 1000,
-      height: 700,
+      width: 400,
+      height: 600,
       resizable: true,
       webPreferences: {
         nodeIntegration: false,
@@ -196,6 +197,39 @@ class LocalShareApp {
       this.tray.setToolTip(
         isServerRunning ? "LocalShare - 服务运行中" : "LocalShare"
       );
+    }
+  }
+
+  // 处理从命令行传入的 --share <folderPath>
+  private async handleCommandLineShare() {
+    const args = process.argv;
+    const shareIndex = args.indexOf("--share");
+    if (shareIndex === -1 || !args[shareIndex + 1]) {
+      return;
+    }
+
+    const folderPath = args[shareIndex + 1];
+
+    try {
+      if (!this.webServer) {
+        this.webServer = new WebServer();
+      }
+
+      const serverInfo = await this.webServer.startServer(folderPath);
+      this.updateTrayStatus(true);
+
+      // 将主窗口显示到前台，方便查看二维码
+      if (this.mainWindow) {
+        this.mainWindow.show();
+        this.mainWindow.focus();
+      }
+
+      // 发送状态到渲染进程（若需要立即更新）
+      if (this.mainWindow) {
+        this.mainWindow.webContents.send("server-started", serverInfo);
+      }
+    } catch (error) {
+      console.error("命令行分享启动失败:", error);
     }
   }
 }

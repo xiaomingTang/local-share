@@ -3,6 +3,12 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -57,6 +63,48 @@ header h1 {
   border-bottom: 1px solid #f5f5f7;
   transition: background-color 0.2s ease;
   cursor: pointer;
+}
+
+.file-item.disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.file-item.disabled:hover {
+  background-color: transparent;
+}
+
+/* 面包屑导航（位于文件列表顶部一行） */
+.breadcrumb-row {
+  cursor: default;
+}
+
+.breadcrumb-row .file-info {
+  margin-left: 0;
+}
+
+.breadcrumb-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  font-family: monospace;
+  font-size: 13px;
+  color: #86868b;
+}
+
+.breadcrumb-seg {
+  cursor: pointer;
+  color: #007aff;
+}
+
+.breadcrumb-seg.current {
+  cursor: default;
+  color: #86868b;
+}
+
+.breadcrumb-sep {
+  color: #c7c7cc;
 }
 
 .file-item:hover {
@@ -132,6 +180,16 @@ header h1 {
   background-color: #6d6d70;
 }
 
+.btn-outline {
+  background-color: transparent;
+  color: #1d1d1f;
+  border: 1px solid #c7c7cc;
+}
+
+.btn-outline:hover {
+  background-color: #f5f5f7;
+}
+
 .btn-small {
   padding: 6px 12px;
   font-size: 12px;
@@ -151,6 +209,13 @@ header h1 {
   font-size: 18px;
   font-weight: 600;
   margin-bottom: 16px;
+}
+
+.upload-target {
+  margin: -8px 0 16px;
+  color: #86868b;
+  font-size: 13px;
+  word-break: break-word;
 }
 
 .drop-zone {
@@ -255,6 +320,12 @@ header h1 {
   color: #1d1d1f;
   font-size: 18px;
   font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  margin-right: 12px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .close-btn {
@@ -347,6 +418,14 @@ header h1 {
 
 /* 加载动画 */
 .loading {
+  text-align: center;
+  padding: 40px;
+  color: #86868b;
+  font-size: 16px;
+}
+
+.empty,
+.error-state {
   text-align: center;
   padding: 40px;
   color: #86868b;

@@ -5,6 +5,7 @@ interface Window {
     shareFolder: (folderPath: string) => Promise<any>;
     stopServer: () => Promise<{ success: boolean }>;
     getServerStatus: () => Promise<any>;
+    onServerStarted?: (callback: (event: any, serverInfo: any) => void) => void;
   };
 }
 
@@ -40,6 +41,7 @@ class LocalShareRenderer {
 
     this.bindEvents();
     this.checkServerStatus();
+    this.setupIpcListeners();
   }
 
   private bindEvents(): void {
@@ -117,6 +119,16 @@ class LocalShareRenderer {
       }
     } catch (error) {
       console.error("检查服务器状态失败:", error);
+    }
+  }
+
+  private setupIpcListeners(): void {
+    if (window.electronAPI.onServerStarted) {
+      window.electronAPI.onServerStarted((_, serverInfo: any) => {
+        if (serverInfo) {
+          this.showServerStatus(serverInfo);
+        }
+      });
     }
   }
 

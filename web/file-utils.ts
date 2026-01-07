@@ -1,0 +1,145 @@
+type FileItem = {
+  name: string;
+  type: "directory" | "file";
+  size: number;
+  modified: string;
+  extension?: string | null;
+};
+
+function escapeHtml(text: string): string {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return "0 B";
+
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+}
+
+function canPreview(item: FileItem): boolean {
+  if (item.type === "directory") return false;
+
+  const ext = item.extension || "";
+  const previewableExts = [
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
+    ".bmp",
+    ".svg",
+    ".txt",
+    ".md",
+    ".json",
+    ".html",
+    ".css",
+    ".js",
+    ".ts",
+    ".xml",
+    ".csv",
+    ".log",
+  ];
+
+  return previewableExts.includes(ext) && item.size < 10 * 1024 * 1024;
+}
+
+function getFileIcon(item: FileItem): string {
+  if (item.type === "directory") return "📁";
+
+  const ext = item.extension || "";
+  const iconMap: { [key: string]: string } = {
+    ".jpg": "🖼️",
+    ".jpeg": "🖼️",
+    ".png": "🖼️",
+    ".gif": "🖼️",
+    ".bmp": "🖼️",
+    ".svg": "🖼️",
+    ".mp4": "🎬",
+    ".avi": "🎬",
+    ".mkv": "🎬",
+    ".mov": "🎬",
+    ".wmv": "🎬",
+    ".flv": "🎬",
+    ".mp3": "🎵",
+    ".wav": "🎵",
+    ".flac": "🎵",
+    ".aac": "🎵",
+    ".ogg": "🎵",
+    ".pdf": "📄",
+    ".doc": "📝",
+    ".docx": "📝",
+    ".txt": "📝",
+    ".rtf": "📝",
+    ".xls": "📊",
+    ".xlsx": "📊",
+    ".ppt": "📽️",
+    ".pptx": "📽️",
+    ".zip": "📦",
+    ".rar": "📦",
+    ".7z": "📦",
+    ".tar": "📦",
+    ".gz": "📦",
+    ".js": "💻",
+    ".ts": "💻",
+    ".html": "💻",
+    ".css": "💻",
+    ".py": "💻",
+    ".java": "💻",
+    ".cpp": "💻",
+    ".c": "💻",
+    ".php": "💻",
+    ".rb": "💻",
+    ".go": "💻",
+  };
+
+  return iconMap[ext] || "📄";
+}
+
+function getFileIconClass(item: FileItem): string {
+  if (item.type === "directory") return "folder";
+
+  const ext = item.extension || "";
+  if ([".jpg", ".jpeg", ".png", ".gif", ".bmp", ".svg"].includes(ext))
+    return "image";
+  if ([".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv"].includes(ext))
+    return "video";
+  if ([".mp3", ".wav", ".flac", ".aac", ".ogg"].includes(ext)) return "audio";
+  if (
+    [
+      ".pdf",
+      ".doc",
+      ".docx",
+      ".txt",
+      ".rtf",
+      ".xls",
+      ".xlsx",
+      ".ppt",
+      ".pptx",
+    ].includes(ext)
+  )
+    return "document";
+  if ([".zip", ".rar", ".7z", ".tar", ".gz"].includes(ext)) return "archive";
+  if (
+    [
+      ".js",
+      ".ts",
+      ".html",
+      ".css",
+      ".py",
+      ".java",
+      ".cpp",
+      ".c",
+      ".php",
+      ".rb",
+      ".go",
+    ].includes(ext)
+  )
+    return "code";
+
+  return "default";
+}

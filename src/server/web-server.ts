@@ -5,6 +5,7 @@ import * as fs from "fs";
 import { promisify } from "util";
 import * as qrcode from "qrcode";
 import { networkInterfaces } from "os";
+import { p } from "../utils/file";
 
 export class WebServer {
   private app: express.Application;
@@ -12,6 +13,7 @@ export class WebServer {
   private port: number = 0;
   private sharedFolderPath: string = "";
   private localIP: string = "";
+  private qrCodeDataURL: string = "";
 
   constructor() {
     this.app = express();
@@ -21,12 +23,32 @@ export class WebServer {
 
   private setupMiddleware(): void {
     this.app.use(express.json());
-    this.app.use(express.static(path.join(__dirname, "../../web")));
+    this.app.use(express.static(p("web")));
 
     // 文件上传配置 (Multer v2)
+    // 直接写入共享目录（不使用 temp/ 目录）
     const upload = multer({
       storage: multer.diskStorage({
-        destination: "temp/",
+        destination: (req, file, cb) => {
+          try {
+            const targetPath = (req.body?.path as string) || "";
+            const uploadPath = path.resolve(
+              path.join(this.sharedFolderPath, targetPath)
+            );
+            const sharedRoot = path.resolve(this.sharedFolderPath);
+
+            // 安全检查：确保不会写到共享文件夹之外
+            if (!uploadPath.startsWith(sharedRoot)) {
+              cb(new Error("无权限上传到此路径"), "");
+              return;
+            }
+
+            fs.mkdirSync(uploadPath, { recursive: true });
+            cb(null, uploadPath);
+          } catch (e) {
+            cb(e as Error, "");
+          }
+        },
         filename: (req, file, cb) => {
           // 保持原始文件名
           cb(null, file.originalname);
@@ -44,23 +66,40 @@ export class WebServer {
   private setupRoutes(): void {
     // 主页面
     this.app.get("/", (req, res) => {
-      res.sendFile(path.join(__dirname, "../../web/index.html"));
+      res.sendFile(p("web/index.html"));
     });
 
     // 获取文件夹内容
     this.app.get("/api/files", async (req, res) => {
       try {
         const subPath = (req.query.path as string) || "";
-        const fullPath = path.join(this.sharedFolderPath, subPath);
+        const sharedRoot = path.resolve(this.sharedFolderPath);
+        const fullPath = path.resolve(path.join(sharedRoot, subPath));
 
-        // 安全检查：确保不会访问到共享文件夹之外的内容
-        if (!fullPath.startsWith(this.sharedFolderPath)) {
+        // 安全检查：确保不会访问到共享文件夹之外的内容（需要边界判断，避免前缀欺骗）
+        if (
+          !(
+            fullPath === sharedRoot ||
+            fullPath.startsWith(sharedRoot + path.sep)
+          )
+        ) {
           return res.status(403).json({ error: "无权限访问此路径" });
         }
 
+        // 路径不存在 / 不是文件夹
+        if (!fs.existsSync(fullPath)) {
+          return res.status(404).json({ error: "路径不存在" });
+        }
+        const stat = fs.statSync(fullPath);
+        if (!stat.isDirectory()) {
+          return res.status(404).json({ error: "路径不存在" });
+        }
+
         const items = await this.getDirectoryItems(fullPath);
+        const rootName = path.basename(sharedRoot) || sharedRoot || "根目录";
         res.json({
           items,
+          rootName,
           currentPath: subPath,
           parentPath: subPath ? path.dirname(subPath) : null,
         });
@@ -155,16 +194,14 @@ export class WebServer {
     this.app.post("/api/upload", upload.array("files"), async (req, res) => {
       try {
         const targetPath = req.body.path || "";
-        const uploadPath = path.join(this.sharedFolderPath, targetPath);
+        const uploadPath = path.resolve(
+          path.join(this.sharedFolderPath, targetPath)
+        );
+        const sharedRoot = path.resolve(this.sharedFolderPath);
 
         // 安全检查
-        if (!uploadPath.startsWith(this.sharedFolderPath)) {
+        if (!uploadPath.startsWith(sharedRoot)) {
           return res.status(403).json({ error: "无权限上传到此路径" });
-        }
-
-        // 确保目标文件夹存在
-        if (!fs.existsSync(uploadPath)) {
-          fs.mkdirSync(uploadPath, { recursive: true });
         }
 
         const files = req.files as Express.Multer.File[];
@@ -174,8 +211,16 @@ export class WebServer {
 
         const results = [];
         for (const file of files) {
+          // 理论上 diskStorage 已经直接写入 uploadPath。
+          // 但如果 multipart 字段顺序导致 req.body.path 为空，可能会落到共享根目录，这里做一次兜底移动。
           const targetFilePath = path.join(uploadPath, file.originalname!);
-          await fs.promises.rename(file.path, targetFilePath);
+          if (path.resolve(file.path) !== path.resolve(targetFilePath)) {
+            await fs.promises.mkdir(path.dirname(targetFilePath), {
+              recursive: true,
+            });
+            await fs.promises.rename(file.path, targetFilePath);
+          }
+
           results.push({
             name: file.originalname,
             size: file.size,
@@ -226,17 +271,49 @@ export class WebServer {
 
   private getLocalIP(): string {
     const nets = networkInterfaces();
-    const results = [];
+    const candidates: Array<{ name: string; address: string; score: number }> =
+      [];
+
+    const isIgnoredInterface = (name: string) =>
+      /wsl|vEthernet|hyper-v|docker|vmware|virtualbox|loopback|tailscale|zerotier/i.test(
+        name
+      );
+
+    const scoreIp = (ip: string) => {
+      if (ip.startsWith("192.168.")) return 30;
+      if (ip.startsWith("10.")) return 20;
+      // 172.16.0.0/12
+      if (/^172\.(1[6-9]|2\d|3[01])\./.test(ip)) return 10;
+      // 169.254.x.x (APIPA) 直接忽略
+      if (ip.startsWith("169.254.")) return -100;
+      return 0;
+    };
 
     for (const name of Object.keys(nets)) {
+      if (isIgnoredInterface(name)) continue;
+
       for (const net of nets[name]!) {
-        if (net.family === "IPv4" && !net.internal) {
-          results.push(net.address);
+        if (net.family !== "IPv4" || net.internal) continue;
+        const score = scoreIp(net.address);
+        if (score < 0) continue;
+        candidates.push({ name, address: net.address, score });
+      }
+    }
+
+    // 如果全被过滤了，再退一步：不忽略网卡名，只按 IP 范围挑
+    if (candidates.length === 0) {
+      for (const name of Object.keys(nets)) {
+        for (const net of nets[name]!) {
+          if (net.family !== "IPv4" || net.internal) continue;
+          const score = scoreIp(net.address);
+          if (score < 0) continue;
+          candidates.push({ name, address: net.address, score });
         }
       }
     }
 
-    return results[0] || "localhost";
+    candidates.sort((a, b) => b.score - a.score);
+    return candidates[0]?.address || "localhost";
   }
 
   private getAvailablePort(): Promise<number> {
@@ -269,6 +346,8 @@ export class WebServer {
             return;
           }
 
+          this.qrCodeDataURL = qrCodeDataURL;
+
           resolve({
             url,
             port: this.port,
@@ -292,6 +371,7 @@ export class WebServer {
           this.server = null;
           this.port = 0;
           this.sharedFolderPath = "";
+          this.qrCodeDataURL = "";
           resolve();
         });
       } else {
@@ -314,6 +394,7 @@ export class WebServer {
       port: this.port,
       localIP: this.localIP,
       sharedFolder: this.sharedFolderPath,
+      qrCode: this.qrCodeDataURL,
     };
   }
 }

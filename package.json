@@ -11,7 +11,7 @@
     "dev:win-admin": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\dev-admin.ps1",
     "start": "electron .",
     "pack": "electron-builder",
-    "dist": "pnpm run build && electron-builder",
+    "dist": "cross-env ELECTRON_BUILDER_CACHE=.\\.cache pnpm run build && cross-env ELECTRON_BUILDER_CACHE=.\\.cache electron-builder",
     "postinstall": "electron-builder install-app-deps"
   },
   "devDependencies": {
@@ -42,12 +42,19 @@
       "output": "release"
     },
     "files": [
-      "dist/**/*",
+      "src/**/*",
+      "renderer/**/*",
       "web/**/*",
       "assets/**/*"
     ],
+    "extraResources": [
+      {
+        "from": "assets/folder-share.ico",
+        "to": "assets/folder-share.ico"
+      }
+    ],
     "win": {
-      "target": "portable",
+      "target": "dir",
       "icon": "assets/icon.ico"
     },
     "portable": {

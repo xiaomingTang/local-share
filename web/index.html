@@ -12,9 +12,6 @@
   <div class="container">
     <header>
       <h1>📁 文件共享</h1>
-      <div class="breadcrumb">
-        <span id="currentPath">/</span>
-      </div>
     </header>
 
     <main>
@@ -26,6 +23,7 @@
       <!-- 文件上传区域 -->
       <div class="upload-section">
         <h3>文件上传</h3>
+        <div id="uploadTarget" class="upload-target">上传到：-</div>
         <div id="dropZone" class="drop-zone">
           <div class="drop-zone-content">
             <div class="upload-icon">📤</div>
@@ -66,6 +64,8 @@
     <div id="notification" class="notification" style="display: none;"></div>
   </div>
 
+  <script src="file-utils.js"></script>
+  <script src="breadcrumb.js"></script>
   <script src="web-app.js"></script>
 </body>
 

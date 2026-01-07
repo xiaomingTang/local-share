@@ -1,8 +1,9 @@
 class WebFileManager {
   private currentPath: string = "";
+  private rootName: string = "根目录";
   private elements: {
     fileList: HTMLElement;
-    currentPath: HTMLElement;
+    uploadTarget: HTMLElement;
     dropZone: HTMLElement;
     fileInput: HTMLInputElement;
     uploadProgress: HTMLElement;
@@ -18,7 +19,7 @@ class WebFileManager {
   constructor() {
     this.elements = {
       fileList: document.getElementById("fileList")!,
-      currentPath: document.getElementById("currentPath")!,
+      uploadTarget: document.getElementById("uploadTarget")!,
       dropZone: document.getElementById("dropZone")!,
       fileInput: document.getElementById("fileInput")! as HTMLInputElement,
       uploadProgress: document.getElementById("uploadProgress")!,
@@ -32,7 +33,29 @@ class WebFileManager {
     };
 
     this.bindEvents();
-    this.loadFiles();
+    const initialPath = this.getPathFromUrl();
+    this.loadFiles(initialPath);
+  }
+
+  private updateUploadTarget(): void {
+    const normalized = (this.currentPath || "").trim();
+    const label = normalized ? `${this.rootName}/${normalized}` : this.rootName;
+    this.elements.uploadTarget.textContent = `上传到：${label}`;
+  }
+
+  private getPathFromUrl(): string {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("path") || "";
+  }
+
+  private syncPathToUrl(path: string): void {
+    const url = new URL(window.location.href);
+    if (path) {
+      url.searchParams.set("path", path);
+    } else {
+      url.searchParams.delete("path");
+    }
+    window.history.replaceState(null, "", url);
   }
 
   private bindEvents(): void {
@@ -59,6 +82,20 @@ class WebFileManager {
       const files = Array.from((e.target as HTMLInputElement).files || []);
       this.uploadFiles(files);
     });
+
+    // 点击预览弹窗外部关闭
+    this.elements.previewModal.addEventListener("click", (e) => {
+      if (e.target === this.elements.previewModal) {
+        closePreview();
+      }
+    });
+
+    // ESC 关闭预览弹窗
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        closePreview();
+      }
+    });
   }
 
   private async loadFiles(path: string = ""): Promise<void> {
@@ -75,11 +112,31 @@ class WebFileManager {
       }
 
       this.currentPath = path;
-      this.elements.currentPath.textContent = path || "/";
+      this.rootName = data.rootName || this.rootName;
+      this.syncPathToUrl(this.currentPath);
+      this.updateUploadTarget();
       this.renderFileList(data);
     } catch (error) {
-      this.elements.fileList.innerHTML = '<div class="loading">加载失败</div>';
-      this.showNotification("加载文件列表失败", "error");
+      const message =
+        error instanceof Error ? error.message : "加载文件列表失败";
+
+      // 即使路径无效，也要把它写回 URL，刷新后仍能复现并提示
+      this.currentPath = path;
+      this.syncPathToUrl(this.currentPath);
+      this.updateUploadTarget();
+
+      this.elements.fileList.innerHTML = `
+        <div class="file-item breadcrumb-row">
+          <div class="file-info">
+            <div class="file-name">${buildBreadcrumbHtml(
+              this.currentPath,
+              this.rootName
+            )}</div>
+          </div>
+        </div>
+        <div class="error-state">${escapeHtml(message)}</div>
+      `;
+      this.showNotification(message, "error");
     }
   }
 
@@ -87,54 +144,53 @@ class WebFileManager {
     const { items, parentPath } = data;
     let html = "";
 
-    // 添加返回上级目录按钮
-    if (parentPath !== null) {
-      html += `
-                <div class="file-item" onclick="fileManager.loadFiles('${
-                  parentPath || ""
-                }')">
-                    <div class="file-icon">📁</div>
-                    <div class="file-info">
-                        <div class="file-name">.. 返回上级目录</div>
-                    </div>
-                </div>
-            `;
-    }
+    // 以面包屑导航替代“返回上级目录”行
+    html += `
+          <div class="file-item breadcrumb-row">
+            <div class="file-info">
+              <div class="file-name">${buildBreadcrumbHtml(
+                this.currentPath,
+                this.rootName
+              )}</div>
+            </div>
+          </div>
+        `;
 
     // 渲染文件和文件夹
     for (const item of items) {
-      const icon = this.getFileIcon(item);
-      const size = item.type === "file" ? this.formatFileSize(item.size) : "";
+      const icon = getFileIcon(item);
+      const size = item.type === "file" ? formatFileSize(item.size) : "";
       const date = new Date(item.modified).toLocaleDateString();
 
+      const nameJs = JSON.stringify(item.name);
+      const isDir = item.type === "directory";
+      const previewable = canPreview(item);
+      const dblClickHandler = isDir
+        ? `ondblclick='if(event.target.closest("button")) return; fileManager.openFolder(${nameJs})'`
+        : previewable
+        ? `ondblclick='if(event.target.closest("button")) return; fileManager.previewFile(${nameJs})'`
+        : "";
+
       html += `
-                <div class="file-item">
-                    <div class="file-icon ${this.getFileIconClass(
+                <div class="file-item" ${dblClickHandler}>
+                    <div class="file-icon ${getFileIconClass(
                       item
                     )}">${icon}</div>
                     <div class="file-info">
-                        <div class="file-name">${this.escapeHtml(
-                          item.name
-                        )}</div>
+                        <div class="file-name">${escapeHtml(item.name)}</div>
                         <div class="file-details">${size} • ${date}</div>
                     </div>
                     <div class="file-actions">
                         ${
                           item.type === "directory"
-                            ? `<button class="btn btn-primary btn-small" onclick="fileManager.openFolder('${this.escapeHtml(
-                                item.name
-                              )}')">打开</button>`
+                            ? `<button class="btn btn-outline btn-small" onclick='event.stopPropagation(); fileManager.openFolder(${nameJs})'>打开</button>`
                             : `
                                 ${
-                                  this.canPreview(item)
-                                    ? `<button class="btn btn-secondary btn-small" onclick="fileManager.previewFile('${this.escapeHtml(
-                                        item.name
-                                      )}')">预览</button>`
+                                  canPreview(item)
+                                    ? `<button class="btn btn-secondary btn-small" onclick='event.stopPropagation(); fileManager.previewFile(${nameJs})'>预览</button>`
                                     : ""
                                 }
-                                <button class="btn btn-primary btn-small" onclick="fileManager.downloadFile('${this.escapeHtml(
-                                  item.name
-                                )}')">下载</button>
+                                <button class="btn btn-primary btn-small" onclick='event.stopPropagation(); fileManager.downloadFile(${nameJs})'>下载</button>
                             `
                         }
                     </div>
@@ -143,154 +199,10 @@ class WebFileManager {
     }
 
     if (items.length === 0) {
-      html = '<div class="loading">此文件夹为空</div>';
+      html += '<div class="empty">此文件夹为空</div>';
     }
 
     this.elements.fileList.innerHTML = html;
-  }
-
-  private getFileIcon(item: any): string {
-    if (item.type === "directory") return "📁";
-
-    const ext = item.extension || "";
-    const iconMap: { [key: string]: string } = {
-      // 图片
-      ".jpg": "🖼️",
-      ".jpeg": "🖼️",
-      ".png": "🖼️",
-      ".gif": "🖼️",
-      ".bmp": "🖼️",
-      ".svg": "🖼️",
-      // 视频
-      ".mp4": "🎬",
-      ".avi": "🎬",
-      ".mkv": "🎬",
-      ".mov": "🎬",
-      ".wmv": "🎬",
-      ".flv": "🎬",
-      // 音频
-      ".mp3": "🎵",
-      ".wav": "🎵",
-      ".flac": "🎵",
-      ".aac": "🎵",
-      ".ogg": "🎵",
-      // 文档
-      ".pdf": "📄",
-      ".doc": "📝",
-      ".docx": "📝",
-      ".txt": "📝",
-      ".rtf": "📝",
-      ".xls": "📊",
-      ".xlsx": "📊",
-      ".ppt": "📽️",
-      ".pptx": "📽️",
-      // 压缩包
-      ".zip": "📦",
-      ".rar": "📦",
-      ".7z": "📦",
-      ".tar": "📦",
-      ".gz": "📦",
-      // 代码
-      ".js": "💻",
-      ".ts": "💻",
-      ".html": "💻",
-      ".css": "💻",
-      ".py": "💻",
-      ".java": "💻",
-      ".cpp": "💻",
-      ".c": "💻",
-      ".php": "💻",
-      ".rb": "💻",
-      ".go": "💻",
-    };
-
-    return iconMap[ext] || "📄";
-  }
-
-  private getFileIconClass(item: any): string {
-    if (item.type === "directory") return "folder";
-
-    const ext = item.extension || "";
-    if ([".jpg", ".jpeg", ".png", ".gif", ".bmp", ".svg"].includes(ext))
-      return "image";
-    if ([".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv"].includes(ext))
-      return "video";
-    if ([".mp3", ".wav", ".flac", ".aac", ".ogg"].includes(ext)) return "audio";
-    if (
-      [
-        ".pdf",
-        ".doc",
-        ".docx",
-        ".txt",
-        ".rtf",
-        ".xls",
-        ".xlsx",
-        ".ppt",
-        ".pptx",
-      ].includes(ext)
-    )
-      return "document";
-    if ([".zip", ".rar", ".7z", ".tar", ".gz"].includes(ext)) return "archive";
-    if (
-      [
-        ".js",
-        ".ts",
-        ".html",
-        ".css",
-        ".py",
-        ".java",
-        ".cpp",
-        ".c",
-        ".php",
-        ".rb",
-        ".go",
-      ].includes(ext)
-    )
-      return "code";
-
-    return "default";
-  }
-
-  private canPreview(item: any): boolean {
-    if (item.type === "directory") return false;
-
-    const ext = item.extension || "";
-    const previewableExts = [
-      ".jpg",
-      ".jpeg",
-      ".png",
-      ".gif",
-      ".bmp",
-      ".svg",
-      ".txt",
-      ".md",
-      ".json",
-      ".html",
-      ".css",
-      ".js",
-      ".ts",
-      ".xml",
-      ".csv",
-      ".log",
-    ];
-
-    return previewableExts.includes(ext) && item.size < 10 * 1024 * 1024; // 10MB 限制
-  }
-
-  private formatFileSize(bytes: number): string {
-    if (bytes === 0) return "0 B";
-
-    const k = 1024;
-    const sizes = ["B", "KB", "MB", "GB", "TB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-  }
-
-  private escapeHtml(text: string): string {
-    const div = document.createElement("div");
-    div.textContent = text;
-    return div.innerHTML;
   }
 
   public openFolder(folderName: string): void {
@@ -324,7 +236,7 @@ class WebFileManager {
         this.elements.previewContent.innerHTML = `<img src="${imageUrl}" class="preview-image" alt="${fileName}">`;
       } else {
         const text = await response.text();
-        this.elements.previewContent.innerHTML = `<div class="preview-text">${this.escapeHtml(
+        this.elements.previewContent.innerHTML = `<div class="preview-text">${escapeHtml(
           text
         )}</div>`;
       }
