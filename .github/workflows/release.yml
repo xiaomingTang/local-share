@@ -38,7 +38,8 @@ jobs:
         run: |
           $file = Get-ChildItem -Path release -Filter '*win.zip' -File | Select-Object -First 1
           if (-not $file) { Write-Error "No artifact found in release/"; exit 1 }
-          Add-Content -Path $env:GITHUB_ENV -Value "ARTIFACT=$($file.FullName)"
+          $rel = "release/$($file.Name)"
+          Add-Content -Path $env:GITHUB_ENV -Value "ARTIFACT=$rel"
 
       - name: Create GitHub Release (from tag) and upload asset
         uses: softprops/action-gh-release@v1
