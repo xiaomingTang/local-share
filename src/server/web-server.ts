@@ -168,6 +168,7 @@ export class WebServer {
       // 根据文件扩展名设置 MIME 类型
       const ext = path.extname(fullPath).toLowerCase();
       const mimeTypes: { [key: string]: string } = {
+        ".ico": "image/jpeg",
         ".jpg": "image/jpeg",
         ".jpeg": "image/jpeg",
         ".png": "image/png",
@@ -176,6 +177,9 @@ export class WebServer {
         ".md": "text/markdown",
         ".json": "application/json",
         ".html": "text/html",
+        ".xml": "application/xml",
+        ".yml": "text/yaml",
+        ".yaml": "text/yaml",
         ".css": "text/css",
         ".js": "application/javascript",
       };

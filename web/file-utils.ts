@@ -27,6 +27,7 @@ function canPreview(item: FileItem): boolean {
 
   const ext = item.extension || "";
   const previewableExts = [
+    ".ico",
     ".jpg",
     ".jpeg",
     ".png",
@@ -41,6 +42,8 @@ function canPreview(item: FileItem): boolean {
     ".js",
     ".ts",
     ".xml",
+    ".yml",
+    ".yaml",
     ".csv",
     ".log",
   ];
@@ -53,6 +56,7 @@ function getFileIcon(item: FileItem): string {
 
   const ext = item.extension || "";
   const iconMap: { [key: string]: string } = {
+    ".ico": "🖼️",
     ".jpg": "🖼️",
     ".jpeg": "🖼️",
     ".png": "🖼️",
@@ -86,6 +90,10 @@ function getFileIcon(item: FileItem): string {
     ".gz": "📦",
     ".js": "💻",
     ".ts": "💻",
+    ".json": "💻",
+    ".xml": "💻",
+    ".yml": "💻",
+    ".yaml": "💻",
     ".html": "💻",
     ".css": "💻",
     ".py": "💻",
@@ -104,7 +112,7 @@ function getFileIconClass(item: FileItem): string {
   if (item.type === "directory") return "folder";
 
   const ext = item.extension || "";
-  if ([".jpg", ".jpeg", ".png", ".gif", ".bmp", ".svg"].includes(ext))
+  if ([".ico", ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".svg"].includes(ext))
     return "image";
   if ([".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv"].includes(ext))
     return "video";
