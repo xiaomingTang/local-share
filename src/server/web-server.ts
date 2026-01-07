@@ -340,22 +340,28 @@ export class WebServer {
         const url = `http://${this.localIP}:${this.port}`;
 
         // 生成二维码
-        qrcode.toDataURL(url, (err, qrCodeDataURL) => {
-          if (err) {
-            reject(err);
-            return;
+        qrcode.toDataURL(
+          url,
+          {
+            margin: 0,
+          },
+          (err, qrCodeDataURL) => {
+            if (err) {
+              reject(err);
+              return;
+            }
+
+            this.qrCodeDataURL = qrCodeDataURL;
+
+            resolve({
+              url,
+              port: this.port,
+              localIP: this.localIP,
+              qrCode: qrCodeDataURL,
+              sharedFolder: folderPath,
+            });
           }
-
-          this.qrCodeDataURL = qrCodeDataURL;
-
-          resolve({
-            url,
-            port: this.port,
-            localIP: this.localIP,
-            qrCode: qrCodeDataURL,
-            sharedFolder: folderPath,
-          });
-        });
+        );
       });
 
       this.server.on("error", (err: any) => {

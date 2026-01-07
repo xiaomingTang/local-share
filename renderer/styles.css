@@ -122,11 +122,6 @@ header p {
   min-width: 80px;
 }
 
-.status-text {
-  color: #27ae60;
-  font-weight: 500;
-}
-
 .path-text {
   color: #7f8c8d;
   font-family: monospace;
@@ -150,15 +145,16 @@ header p {
 /* 二维码容器 */
 .qr-code-container {
   text-align: center;
-  margin: 20px 0;
+  margin-bottom: 12px;
 }
 
 .qr-code-container img {
   max-width: 200px;
+  margin: auto;
   height: auto;
   border: 1px solid #ddd;
   border-radius: 8px;
-  padding: 4px;
+  padding: 8px;
   background: white;
 }
 

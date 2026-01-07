@@ -134,8 +134,6 @@ class LocalShareRenderer {
 
   private showServerStatus(serverInfo: any): void {
     this.elements.serverStatus.style.display = "block";
-    this.elements.statusText.textContent = "运行中";
-    this.elements.statusText.style.color = "#27ae60";
 
     this.elements.sharedFolder.textContent = serverInfo.sharedFolder;
     this.elements.serverUrl.textContent = serverInfo.url;
@@ -149,8 +147,6 @@ class LocalShareRenderer {
 
   private hideServerStatus(): void {
     this.elements.serverStatus.style.display = "none";
-    this.elements.statusText.textContent = "未运行";
-    this.elements.statusText.style.color = "#95a5a6";
 
     this.elements.sharedFolder.textContent = "-";
     this.elements.serverUrl.textContent = "-";

@@ -71,7 +71,7 @@ class LocalShareApp {
     this.mainWindow.loadFile(p("renderer/index.html"));
 
     // 仅在开发环境下打开开发者工具
-    if (process.env.NODE_ENV === "development") {
+    if (!app.isPackaged) {
       this.mainWindow.webContents.openDevTools();
     }
 
