@@ -55,7 +55,7 @@ export class WebServer {
         },
       }),
       limits: {
-        fileSize: 100 * 1024 * 1024, // 100MB 限制
+        fileSize: 10 * 1024 * 1024 * 1024, // 10 GB
       },
     });
 

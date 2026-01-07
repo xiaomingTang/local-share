@@ -1,0 +1,54 @@
+name: Build and Publish Release (Windows)
+
+permissions:
+  contents: write
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    name: Build on Windows and upload release asset
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build distributable
+        run: pnpm run dist
+
+      - name: Show release directory
+        run: dir release
+
+      - name: Find artifact
+        shell: pwsh
+        run: |
+          $file = Get-ChildItem -Path release -Filter '*win.zip' -File | Select-Object -First 1
+          if (-not $file) { Write-Error "No artifact found in release/"; exit 1 }
+          $rel = "release/$($file.Name)"
+          Add-Content -Path $env:GITHUB_ENV -Value "ARTIFACT=$rel"
+
+      - name: Create GitHub Release (from tag) and upload asset
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: |
+            ${{ env.ARTIFACT }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
