@@ -54,7 +54,7 @@ class LocalShareRenderer {
         const result = await window.electronAPI.addContextMenu();
 
         if (result.success) {
-          this.showNotification("右键菜单添加成功！", "success");
+          this.showNotification("添加右键菜单成功！", "success");
         } else {
           this.showNotification(`添加失败: ${result.error}`, "error");
         }
@@ -75,7 +75,7 @@ class LocalShareRenderer {
         const result = await window.electronAPI.removeContextMenu();
 
         if (result.success) {
-          this.showNotification("右键菜单移除成功！", "success");
+          this.showNotification("移除右键菜单成功！", "info");
         } else {
           this.showNotification(`移除失败: ${result.error}`, "error");
         }
