@@ -53,7 +53,7 @@
       }
     ],
     "win": {
-      "target": "dir",
+      "target": "zip",
       "icon": "assets/icon.ico"
     },
     "portable": {
