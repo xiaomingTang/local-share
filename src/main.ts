@@ -66,7 +66,8 @@ class LocalShareApp {
     });
 
     const ua = this.mainWindow.webContents.getUserAgent();
-    this.mainWindow.webContents.setUserAgent(`${ua} LocalShare/1.0.0`);
+    const appVersion = app.getVersion();
+    this.mainWindow.webContents.setUserAgent(`${ua} LocalShare/${appVersion}`);
 
     this.mainWindow.loadFile(p("renderer/index.html"));
 
