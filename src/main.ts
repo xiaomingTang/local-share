@@ -10,6 +10,16 @@ class LocalShareApp {
   private registryManager: RegistryManager;
 
   constructor() {
+    // 设置进程编码为UTF-8
+    if (process.platform === "win32") {
+      if (process.stdout && process.stdout.setEncoding) {
+        process.stdout.setEncoding("utf8");
+      }
+      if (process.stderr && process.stderr.setEncoding) {
+        process.stderr.setEncoding("utf8");
+      }
+    }
+
     this.registryManager = new RegistryManager();
     this.initializeApp();
   }
