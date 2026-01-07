@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self';"> -->
+  <title>LocalShare</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <h1>LocalShare</h1>
+      <p>本地文件共享工具</p>
+    </header>
+
+    <main>
+      <div class="button-group">
+        <button id="addContextMenu" class="btn btn-primary">
+          添加到文件夹右键菜单
+        </button>
+        <button id="removeContextMenu" class="btn btn-secondary">
+          移除文件夹右键菜单
+        </button>
+      </div>
+
+      <div id="serverStatus" class="status-panel" style="display: none;">
+        <h3>服务状态</h3>
+        <div class="status-item">
+          <span class="label">状态:</span>
+          <span id="statusText" class="status-text">未运行</span>
+        </div>
+        <div class="status-item">
+          <span class="label">共享文件夹:</span>
+          <span id="sharedFolder" class="path-text">-</span>
+        </div>
+        <div class="status-item">
+          <span class="label">访问地址:</span>
+          <span id="serverUrl" class="url-text">-</span>
+        </div>
+        <div class="qr-code-container">
+          <img id="qrCode" alt="二维码" style="display: none;">
+        </div>
+        <button id="stopServer" class="btn btn-danger">
+          停止服务
+        </button>
+      </div>
+
+      <div class="info-panel">
+        <h3>使用说明</h3>
+        <ol>
+          <li>点击"添加到文件夹右键菜单"注册右键菜单功能</li>
+          <li>在任意文件夹上右键，选择"共享此文件夹"</li>
+          <li>应用会生成二维码和访问链接</li>
+          <li>手机扫描二维码即可访问文件夹内容</li>
+          <li>支持文件预览、下载和上传功能</li>
+        </ol>
+      </div>
+    </main>
+
+    <div id="notification" class="notification" style="display: none;"></div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+
+</html>

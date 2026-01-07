@@ -1,0 +1,21 @@
+import { contextBridge, ipcRenderer } from "electron";
+
+const electronAPI = {
+  // 添加右键菜单
+  addContextMenu: () => ipcRenderer.invoke("add-context-menu"),
+
+  // 移除右键菜单
+  removeContextMenu: () => ipcRenderer.invoke("remove-context-menu"),
+
+  // 开始文件夹共享
+  shareFolder: (folderPath: string) =>
+    ipcRenderer.invoke("share-folder", folderPath),
+
+  // 停止服务器
+  stopServer: () => ipcRenderer.invoke("stop-server"),
+
+  // 获取服务器状态
+  getServerStatus: () => ipcRenderer.invoke("get-server-status"),
+};
+
+contextBridge.exposeInMainWorld("electronAPI", electronAPI);
