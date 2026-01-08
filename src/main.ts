@@ -8,6 +8,7 @@ class LocalShareApp {
   private webServer: WebServer | null = null;
   private tray: Tray | null = null;
   private registryManager: RegistryManager;
+  private commandLineShare: boolean = false;
 
   constructor() {
     // 设置进程编码为UTF-8
@@ -178,6 +179,13 @@ class LocalShareApp {
         serverInfo: this.webServer?.getServerInfo() || null,
       };
     });
+
+    // 查询应用是否通过命令行 --share 启动
+    ipcMain.handle("get-commandline-share", () => {
+      return { commandLineShare: this.commandLineShare };
+    });
+
+    // (已移除) 原生上下文菜单功能由渲染进程禁用
   }
 
   private stopWebServer() {
@@ -208,6 +216,9 @@ class LocalShareApp {
     if (shareIndex === -1 || !args[shareIndex + 1]) {
       return;
     }
+
+    // 标记应用是通过命令行 --share 启动的
+    this.commandLineShare = true;
 
     const folderPath = args[shareIndex + 1];
 

@@ -5,12 +5,22 @@ interface Window {
     shareFolder: (folderPath: string) => Promise<any>;
     stopServer: () => Promise<{ success: boolean }>;
     getServerStatus: () => Promise<any>;
+    getCommandlineShare?: () => Promise<{ commandLineShare: boolean }>;
     onServerStarted?: (callback: (event: any, serverInfo: any) => void) => void;
   };
 }
 
 class LocalShareRenderer {
+  // MUI-like ExpandLess SVG (up chevron)
+  private readonly EXPAND_LESS_SVG = `
+    <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+      <path fill="currentColor" d="M12 8.59L16.59 13.17 18 11.76 12 5.76 6 11.76 7.41 13.17z"></path>
+    </svg>
+  `;
   private elements: {
+    contextPanel?: HTMLElement;
+    contextPanelHeader?: HTMLElement;
+    contextToggleBtn?: HTMLButtonElement;
     addContextMenu: HTMLButtonElement;
     removeContextMenu: HTMLButtonElement;
     serverStatus: HTMLElement;
@@ -37,11 +47,70 @@ class LocalShareRenderer {
       qrCode: document.getElementById("qrCode") as HTMLImageElement,
       stopServer: document.getElementById("stopServer") as HTMLButtonElement,
       notification: document.getElementById("notification") as HTMLElement,
+      contextPanel: document.getElementById("contextPanel") as HTMLElement,
+      contextPanelHeader: document.getElementById(
+        "contextPanelHeader"
+      ) as HTMLElement,
+      contextToggleBtn: document.getElementById(
+        "contextToggleBtn"
+      ) as HTMLButtonElement,
     };
 
+    this.initializeContextPanel();
     this.bindEvents();
     this.checkServerStatus();
     this.setupIpcListeners();
+  }
+
+  private async initializeContextPanel(): Promise<void> {
+    try {
+      // 如果 preload 中暴露了 getCommandlineShare，则查询
+      const resp = await (window as any).electronAPI.getCommandlineShare();
+      const hasCommandLineShare = resp && resp.commandLineShare;
+
+      const content = document.getElementById("contextContent");
+      const toggle = this.elements.contextToggleBtn;
+
+      if (hasCommandLineShare) {
+        // 显示折叠按钮，面板默认折叠
+        if (toggle) {
+          toggle.style.display = "inline-flex";
+          toggle.textContent = "⚙"; // 设置图标表示可展开
+          toggle.setAttribute("aria-expanded", "false");
+        }
+        if (content) {
+          content.classList.add("collapsed");
+        }
+        // 点击切换
+        toggle?.addEventListener("click", () => {
+          const isCollapsed = content?.classList.contains("collapsed");
+          if (isCollapsed) {
+            content?.classList.remove("collapsed");
+            // 使用 MUI 风格的向上箭头 SVG
+            toggle!.innerHTML = this.EXPAND_LESS_SVG;
+            toggle!.setAttribute("aria-expanded", "true");
+          } else {
+            content?.classList.add("collapsed");
+            toggle!.textContent = "⚙";
+            toggle!.setAttribute("aria-expanded", "false");
+          }
+        });
+      } else {
+        // 不支持折叠，始终展开并隐藏切换按钮
+        if (toggle) {
+          toggle.style.display = "none";
+        }
+        if (content) {
+          content.classList.remove("collapsed");
+        }
+      }
+    } catch (error) {
+      console.warn("无法查询 commandLineShare 状态，默认展开面板：", error);
+      const toggle = this.elements.contextToggleBtn;
+      const content = document.getElementById("contextContent");
+      if (toggle) toggle.style.display = "none";
+      if (content) content.classList.remove("collapsed");
+    }
   }
 
   private bindEvents(): void {

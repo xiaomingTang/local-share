@@ -16,6 +16,8 @@ const electronAPI = {
 
   // 获取服务器状态
   getServerStatus: () => ipcRenderer.invoke("get-server-status"),
+  // 查询是否通过命令行 --share 启动
+  getCommandlineShare: () => ipcRenderer.invoke("get-commandline-share"),
   // 主进程通知服务器已启动（用于命令行 --share 场景）
   onServerStarted: (callback: (event: any, serverInfo: any) => void) =>
     ipcRenderer.on("server-started", callback),

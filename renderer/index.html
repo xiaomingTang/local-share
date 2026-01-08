@@ -19,13 +19,21 @@
     </header>
 
     <main>
-      <div class="button-group">
-        <button id="addContextMenu" class="btn btn-primary">
-          添加到文件夹右键菜单
-        </button>
-        <button id="removeContextMenu" class="btn btn-secondary">
-          移除文件夹右键菜单
-        </button>
+      <!-- 右键菜单管理面板（可折叠） -->
+      <div id="contextPanel" class="context-panel">
+        <div id="contextPanelHeader" class="context-panel-header">
+          <div class="context-panel-title">右键菜单管理</div>
+          <button id="contextToggleBtn" class="context-toggle-btn" title="展开/折叠" aria-expanded="true"
+            style="display: none;">⚙</button>
+        </div>
+        <div id="contextContent" class="context-panel-content">
+          <button id="addContextMenu" class="btn btn-primary">
+            添加到文件夹右键菜单
+          </button>
+          <button id="removeContextMenu" class="btn btn-secondary">
+            移除文件夹右键菜单
+          </button>
+        </div>
       </div>
 
       <div id="serverStatus" class="status-panel" style="display: none;">
