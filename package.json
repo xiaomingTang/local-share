@@ -37,6 +37,12 @@
   "build": {
     "appId": "com.localshare.app",
     "productName": "LocalShare",
+    "compression": "store",
+    "asar": true,
+    "asarUnpack": [
+      "**/*.node",
+      "node_modules/**/build/Release/**"
+    ],
     "directories": {
       "output": "release"
     },
@@ -44,7 +50,14 @@
       "src/**/*",
       "renderer/**/*",
       "web/**/*",
-      "assets/**/*"
+      "assets/**/*",
+      "!**/*.map",
+      "!**/test/**",
+      "!**/tests/**",
+      "!**/docs/**",
+      "!**/README.md",
+      "!**/README.*",
+      "!**/locales/**"
     ],
     "extraResources": [
       {
