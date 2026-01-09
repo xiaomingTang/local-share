@@ -5,7 +5,7 @@ interface Window {
     shareFolder: (folderPath: string) => Promise<any>;
     stopServer: () => Promise<{ success: boolean }>;
     getServerStatus: () => Promise<any>;
-    getCommandlineShare?: () => Promise<{ commandLineShare: boolean }>;
+    getCommandlineShare: () => Promise<{ commandLineShare: boolean }>;
     onServerStarted?: (callback: (event: any, serverInfo: any) => void) => void;
   };
 }
@@ -65,7 +65,7 @@ class LocalShareRenderer {
   private async initializeContextPanel(): Promise<void> {
     try {
       // 如果 preload 中暴露了 getCommandlineShare，则查询
-      const resp = await (window as any).electronAPI.getCommandlineShare();
+      const resp = await window.electronAPI.getCommandlineShare();
       const hasCommandLineShare = resp && resp.commandLineShare;
 
       const content = document.getElementById("contextContent");
