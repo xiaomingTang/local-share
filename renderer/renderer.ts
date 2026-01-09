@@ -1,14 +1,4 @@
-interface Window {
-  electronAPI: {
-    addContextMenu: () => Promise<{ success: boolean; error?: string }>;
-    removeContextMenu: () => Promise<{ success: boolean; error?: string }>;
-    shareFolder: (folderPath: string) => Promise<any>;
-    stopServer: () => Promise<{ success: boolean }>;
-    getServerStatus: () => Promise<any>;
-    getCommandlineShare: () => Promise<{ commandLineShare: boolean }>;
-    onServerStarted?: (callback: (event: any, serverInfo: any) => void) => void;
-  };
-}
+import { ServerInfo } from "../common/type";
 
 class LocalShareRenderer {
   // MUI-like ExpandLess SVG (up chevron)
@@ -193,7 +183,7 @@ class LocalShareRenderer {
 
   private setupIpcListeners(): void {
     if (window.electronAPI.onServerStarted) {
-      window.electronAPI.onServerStarted((_, serverInfo: any) => {
+      window.electronAPI.onServerStarted((_, serverInfo) => {
         if (serverInfo) {
           this.showServerStatus(serverInfo);
         }
@@ -201,7 +191,7 @@ class LocalShareRenderer {
     }
   }
 
-  private showServerStatus(serverInfo: any): void {
+  private showServerStatus(serverInfo: ServerInfo): void {
     this.elements.serverStatus.style.display = "block";
 
     this.elements.sharedFolder.textContent = serverInfo.sharedFolder;

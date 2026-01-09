@@ -1,13 +1,12 @@
 import { app, BrowserWindow, ipcMain, Menu, Tray } from "electron";
-import { p } from "./utils/file";
+import { p } from "./utils/fs-utils";
 import { WebServer } from "./server/web-server";
-import { RegistryManager } from "./utils/registry-manager";
+import { addContextMenu, removeContextMenu } from "./utils/registry-manager";
 
 class LocalShareApp {
   private mainWindow: BrowserWindow | null = null;
   private webServer: WebServer | null = null;
   private tray: Tray | null = null;
-  private registryManager: RegistryManager;
   private commandLineShare: boolean = false;
 
   constructor() {
@@ -21,7 +20,6 @@ class LocalShareApp {
       }
     }
 
-    this.registryManager = new RegistryManager();
     this.initializeApp();
   }
 
@@ -131,7 +129,7 @@ class LocalShareApp {
     // 添加右键菜单
     ipcMain.handle("add-context-menu", async () => {
       try {
-        await this.registryManager.addContextMenu();
+        await addContextMenu();
         return { success: true };
       } catch (error) {
         return { success: false, error: (error as Error).message };
@@ -141,7 +139,7 @@ class LocalShareApp {
     // 移除右键菜单
     ipcMain.handle("remove-context-menu", async () => {
       try {
-        await this.registryManager.removeContextMenu();
+        await removeContextMenu();
         return { success: true };
       } catch (error) {
         return { success: false, error: (error as Error).message };
@@ -149,7 +147,7 @@ class LocalShareApp {
     });
 
     // 开始文件夹共享
-    ipcMain.handle("share-folder", async (event, folderPath: string) => {
+    ipcMain.handle("share-folder", async (_, folderPath: string) => {
       try {
         if (!this.webServer) {
           this.webServer = new WebServer();

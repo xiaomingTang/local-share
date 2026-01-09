@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
+import { ElectronAPI, ServerInfo } from "../common/type";
 
-const electronAPI = {
+const electronAPI: ElectronAPI = {
   // 添加右键菜单
   addContextMenu: () => ipcRenderer.invoke("add-context-menu"),
 
@@ -19,8 +20,12 @@ const electronAPI = {
   // 查询是否通过命令行 --share 启动
   getCommandlineShare: () => ipcRenderer.invoke("get-commandline-share"),
   // 主进程通知服务器已启动（用于命令行 --share 场景）
-  onServerStarted: (callback: (event: any, serverInfo: any) => void) =>
-    ipcRenderer.on("server-started", callback),
+  onServerStarted: (
+    callback: (
+      event: Electron.IpcRendererEvent,
+      serverInfo: ServerInfo | null
+    ) => void
+  ) => ipcRenderer.on("server-started", callback),
 };
 
 contextBridge.exposeInMainWorld("electronAPI", electronAPI);

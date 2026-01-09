@@ -2,14 +2,16 @@ import { default as express } from "express";
 import { default as multer } from "multer";
 import * as path from "path";
 import * as fs from "fs";
-import { promisify } from "util";
 import * as qrcode from "qrcode";
-import { networkInterfaces } from "os";
-import { p } from "../utils/file";
+import { p } from "../utils/fs-utils";
+import { getLocalIP, getAvailablePort } from "../utils/network";
+import { getDirectoryItems } from "../utils/fs-utils";
+import { ServerInfo } from "../../common/type";
+import { Server } from "http";
 
 export class WebServer {
   private app: express.Application;
-  private server: any = null;
+  private server: Server | null = null;
   private port: number = 0;
   private sharedFolderPath: string = "";
   private localIP: string = "";
@@ -95,7 +97,7 @@ export class WebServer {
           return res.status(404).json({ error: "路径不存在" });
         }
 
-        const items = await this.getDirectoryItems(fullPath);
+        const items = await getDirectoryItems(fullPath);
         const rootName = path.basename(sharedRoot) || sharedRoot || "根目录";
         res.json({
           items,
@@ -243,101 +245,14 @@ export class WebServer {
     });
   }
 
-  private async getDirectoryItems(dirPath: string): Promise<any[]> {
-    const readdir = promisify(fs.readdir);
-    const stat = promisify(fs.stat);
-
-    const items = await readdir(dirPath);
-    const result = [];
-
-    for (const item of items) {
-      const fullPath = path.join(dirPath, item);
-      const stats = await stat(fullPath);
-
-      result.push({
-        name: item,
-        type: stats.isDirectory() ? "directory" : "file",
-        size: stats.isFile() ? stats.size : 0,
-        modified: stats.mtime.toISOString(),
-        extension: stats.isFile() ? path.extname(item).toLowerCase() : null,
-      });
-    }
-
-    return result.sort((a, b) => {
-      // 文件夹排在前面
-      if (a.type !== b.type) {
-        return a.type === "directory" ? -1 : 1;
-      }
-      // 然后按名称排序
-      return a.name.localeCompare(b.name);
-    });
-  }
-
-  private getLocalIP(): string {
-    const nets = networkInterfaces();
-    const candidates: Array<{ name: string; address: string; score: number }> =
-      [];
-
-    const isIgnoredInterface = (name: string) =>
-      /wsl|vEthernet|hyper-v|docker|vmware|virtualbox|loopback|tailscale|zerotier/i.test(
-        name
-      );
-
-    const scoreIp = (ip: string) => {
-      if (ip.startsWith("192.168.")) return 30;
-      if (ip.startsWith("10.")) return 20;
-      // 172.16.0.0/12
-      if (/^172\.(1[6-9]|2\d|3[01])\./.test(ip)) return 10;
-      // 169.254.x.x (APIPA) 直接忽略
-      if (ip.startsWith("169.254.")) return -100;
-      return 0;
-    };
-
-    for (const name of Object.keys(nets)) {
-      if (isIgnoredInterface(name)) continue;
-
-      for (const net of nets[name]!) {
-        if (net.family !== "IPv4" || net.internal) continue;
-        const score = scoreIp(net.address);
-        if (score < 0) continue;
-        candidates.push({ name, address: net.address, score });
-      }
-    }
-
-    // 如果全被过滤了，再退一步：不忽略网卡名，只按 IP 范围挑
-    if (candidates.length === 0) {
-      for (const name of Object.keys(nets)) {
-        for (const net of nets[name]!) {
-          if (net.family !== "IPv4" || net.internal) continue;
-          const score = scoreIp(net.address);
-          if (score < 0) continue;
-          candidates.push({ name, address: net.address, score });
-        }
-      }
-    }
-
-    candidates.sort((a, b) => b.score - a.score);
-    return candidates[0]?.address || "localhost";
-  }
-
-  private getAvailablePort(): Promise<number> {
-    return new Promise((resolve) => {
-      const server = require("net").createServer();
-      server.listen(0, () => {
-        const port = server.address().port;
-        server.close(() => resolve(port));
-      });
-    });
-  }
-
-  public async startServer(folderPath: string): Promise<any> {
+  public async startServer(folderPath: string): Promise<ServerInfo> {
     if (this.server) {
       await this.stopServer();
     }
 
     this.sharedFolderPath = folderPath;
-    this.localIP = this.getLocalIP();
-    this.port = await this.getAvailablePort();
+    this.localIP = getLocalIP();
+    this.port = await getAvailablePort();
 
     return new Promise((resolve, reject) => {
       this.server = this.app.listen(this.port, () => {
@@ -368,7 +283,7 @@ export class WebServer {
         );
       });
 
-      this.server.on("error", (err: any) => {
+      this.server.on("error", (err) => {
         reject(err);
       });
     });
@@ -394,7 +309,7 @@ export class WebServer {
     return this.server !== null;
   }
 
-  public getServerInfo(): any {
+  public getServerInfo(): ServerInfo | null {
     if (!this.isRunning()) {
       return null;
     }
