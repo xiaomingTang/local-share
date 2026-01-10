@@ -161,14 +161,22 @@ out/
 *.tsbuildinfo
 
 # Generated JavaScript files
-src/*.js
-src/*.js.map
 src/**/*.js
+src/**/*.mjs
 src/**/*.js.map
-renderer/*.js
-renderer/*.js.map
-web/*.js
-web/*.js.map
+src/**/*.mjs.map
+renderer/**/*.js
+renderer/**/*.mjs
+renderer/**/*.js.map
+renderer/**/*.mjs.map
+web/**/*.js
+web/**/*.mjs
+web/**/*.js.map
+web/**/*.mjs.map
+common/**/*.js
+common/**/*.mjs
+common/**/*.js.map
+common/**/*.mjs.map
 
 # OS generated files
 .DS_Store

@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, Menu, Tray } from "electron";
 import { p } from "./utils/fs-utils";
 import { WebServer } from "./server/web-server";
 import { addContextMenu, removeContextMenu } from "./utils/registry-manager";
+import { remote } from "./remote";
 
 class LocalShareApp {
   private mainWindow: BrowserWindow | null = null;
@@ -50,7 +51,7 @@ class LocalShareApp {
 
   private createWindow() {
     this.mainWindow = new BrowserWindow({
-      width: 400,
+      width: app.isPackaged ? 400 : 1000,
       height: 600,
       resizable: true,
       webPreferences: {
@@ -127,63 +128,40 @@ class LocalShareApp {
 
   private setupIPC() {
     // 添加右键菜单
-    ipcMain.handle("add-context-menu", async () => {
-      try {
-        await addContextMenu();
-        return { success: true };
-      } catch (error) {
-        return { success: false, error: (error as Error).message };
-      }
-    });
+    remote.register("addContextMenu", async () => addContextMenu());
 
     // 移除右键菜单
-    ipcMain.handle("remove-context-menu", async () => {
-      try {
-        await removeContextMenu();
-        return { success: true };
-      } catch (error) {
-        return { success: false, error: (error as Error).message };
-      }
-    });
+    remote.register("removeContextMenu", async () => removeContextMenu());
 
     // 开始文件夹共享
-    ipcMain.handle("share-folder", async (_, folderPath: string) => {
-      try {
-        if (!this.webServer) {
-          this.webServer = new WebServer();
-        }
-
-        const serverInfo = await this.webServer.startServer(folderPath);
-
-        // 更新托盘图标状态
-        this.updateTrayStatus(true);
-
-        return { success: true, ...serverInfo };
-      } catch (error) {
-        return { success: false, error: (error as Error).message };
+    remote.register("shareFolder", async (folderPath: string) => {
+      if (!this.webServer) {
+        this.webServer = new WebServer();
       }
+
+      const serverInfo = await this.webServer.startServer(folderPath);
+
+      // 更新托盘图标状态
+      this.updateTrayStatus(true);
+
+      return serverInfo;
     });
 
     // 停止服务器
-    ipcMain.handle("stop-server", () => {
+    remote.register("stopServer", async () => {
       this.stopWebServer();
-      return { success: true };
     });
 
     // 获取服务器状态
-    ipcMain.handle("get-server-status", () => {
-      return {
-        isRunning: this.webServer?.isRunning() || false,
-        serverInfo: this.webServer?.getServerInfo() || null,
-      };
-    });
+    remote.register("getServerStatus", async () => ({
+      isRunning: this.webServer?.isRunning() || false,
+      serverInfo: this.webServer?.getServerInfo() || null,
+    }));
 
     // 查询应用是否通过命令行 --share 启动
-    ipcMain.handle("get-commandline-share", () => {
-      return { commandLineShare: this.commandLineShare };
-    });
-
-    // (已移除) 原生上下文菜单功能由渲染进程禁用
+    remote.register("getCommandlineShare", async () => ({
+      commandLineShare: this.commandLineShare,
+    }));
   }
 
   private stopWebServer() {
@@ -237,6 +215,9 @@ class LocalShareApp {
       // 发送状态到渲染进程（若需要立即更新）
       if (this.mainWindow) {
         this.mainWindow.webContents.send("server-started", serverInfo);
+        remote._.serverStarted(serverInfo, {
+          targetDeviceId: this.mainWindow.webContents.id.toString(),
+        });
       }
     } catch (error) {
       console.error("命令行分享启动失败:", error);

@@ -1,4 +1,6 @@
 import { ServerInfo } from "../common/type";
+import { toError } from "../src/error/utils";
+import { remote, waitUntilRemoteReady } from "./remote";
 
 class LocalShareRenderer {
   // MUI-like ExpandLess SVG (up chevron)
@@ -46,6 +48,11 @@ class LocalShareRenderer {
       ) as HTMLButtonElement,
     };
 
+    this.init();
+  }
+
+  private async init() {
+    await waitUntilRemoteReady();
     this.initializeContextPanel();
     this.bindEvents();
     this.checkServerStatus();
@@ -55,37 +62,12 @@ class LocalShareRenderer {
   private async initializeContextPanel(): Promise<void> {
     try {
       // 如果 preload 中暴露了 getCommandlineShare，则查询
-      const resp = await window.electronAPI.getCommandlineShare();
-      const hasCommandLineShare = resp && resp.commandLineShare;
+      const resp = await remote._.getCommandlineShare();
 
       const content = document.getElementById("contextContent");
       const toggle = this.elements.contextToggleBtn;
 
-      if (hasCommandLineShare) {
-        // 显示折叠按钮，面板默认折叠
-        if (toggle) {
-          toggle.style.display = "inline-flex";
-          toggle.textContent = "⚙"; // 设置图标表示可展开
-          toggle.setAttribute("aria-expanded", "false");
-        }
-        if (content) {
-          content.classList.add("collapsed");
-        }
-        // 点击切换
-        toggle?.addEventListener("click", () => {
-          const isCollapsed = content?.classList.contains("collapsed");
-          if (isCollapsed) {
-            content?.classList.remove("collapsed");
-            // 使用 MUI 风格的向上箭头 SVG
-            toggle!.innerHTML = this.EXPAND_LESS_SVG;
-            toggle!.setAttribute("aria-expanded", "true");
-          } else {
-            content?.classList.add("collapsed");
-            toggle!.textContent = "⚙";
-            toggle!.setAttribute("aria-expanded", "false");
-          }
-        });
-      } else {
+      if (!resp.commandLineShare) {
         // 不支持折叠，始终展开并隐藏切换按钮
         if (toggle) {
           toggle.style.display = "none";
@@ -93,7 +75,32 @@ class LocalShareRenderer {
         if (content) {
           content.classList.remove("collapsed");
         }
+        return;
       }
+
+      // 显示折叠按钮，面板默认折叠
+      if (toggle) {
+        toggle.style.display = "inline-flex";
+        toggle.textContent = "⚙"; // 设置图标表示可展开
+        toggle.setAttribute("aria-expanded", "false");
+      }
+      if (content) {
+        content.classList.add("collapsed");
+      }
+      // 点击切换
+      toggle?.addEventListener("click", () => {
+        const isCollapsed = content?.classList.contains("collapsed");
+        if (isCollapsed) {
+          content?.classList.remove("collapsed");
+          // 使用 MUI 风格的向上箭头 SVG
+          toggle!.innerHTML = this.EXPAND_LESS_SVG;
+          toggle!.setAttribute("aria-expanded", "true");
+        } else {
+          content?.classList.add("collapsed");
+          toggle!.textContent = "⚙";
+          toggle!.setAttribute("aria-expanded", "false");
+        }
+      });
     } catch (error) {
       console.warn("无法查询 commandLineShare 状态，默认展开面板：", error);
       const toggle = this.elements.contextToggleBtn;
@@ -110,15 +117,12 @@ class LocalShareRenderer {
         this.elements.addContextMenu.disabled = true;
         this.elements.addContextMenu.textContent = "添加中...";
 
-        const result = await window.electronAPI.addContextMenu();
+        await remote._.addContextMenu();
 
-        if (result.success) {
-          this.showNotification("添加右键菜单成功！", "success");
-        } else {
-          this.showNotification(`添加失败: ${result.error}`, "error");
-        }
+        this.showNotification("添加右键菜单成功！", "success");
       } catch (error) {
-        this.showNotification("添加失败: 网络错误", "error");
+        const e = toError(error);
+        this.showNotification(`添加失败：${e.message}`, "error");
       } finally {
         this.elements.addContextMenu.disabled = false;
         this.elements.addContextMenu.textContent = "添加到文件夹右键菜单";
@@ -131,15 +135,11 @@ class LocalShareRenderer {
         this.elements.removeContextMenu.disabled = true;
         this.elements.removeContextMenu.textContent = "移除中...";
 
-        const result = await window.electronAPI.removeContextMenu();
-
-        if (result.success) {
-          this.showNotification("移除右键菜单成功！", "info");
-        } else {
-          this.showNotification(`移除失败: ${result.error}`, "error");
-        }
+        await remote._.removeContextMenu();
+        this.showNotification("移除右键菜单成功！", "info");
       } catch (error) {
-        this.showNotification("移除失败: 网络错误", "error");
+        const e = toError(error);
+        this.showNotification(`移除失败：${e.message}`, "error");
       } finally {
         this.elements.removeContextMenu.disabled = false;
         this.elements.removeContextMenu.textContent = "移除文件夹右键菜单";
@@ -152,14 +152,12 @@ class LocalShareRenderer {
         this.elements.stopServer.disabled = true;
         this.elements.stopServer.textContent = "停止中...";
 
-        const result = await window.electronAPI.stopServer();
-
-        if (result.success) {
-          this.showNotification("服务已停止", "info");
-          this.hideServerStatus();
-        }
+        await remote._.stopServer();
+        this.showNotification("服务已停止", "info");
+        this.hideServerStatus();
       } catch (error) {
-        this.showNotification("停止服务失败", "error");
+        const e = toError(error);
+        this.showNotification(`停止服务失败：${e.message}`, "error");
       } finally {
         this.elements.stopServer.disabled = false;
         this.elements.stopServer.textContent = "停止服务";
@@ -169,7 +167,7 @@ class LocalShareRenderer {
 
   private async checkServerStatus(): Promise<void> {
     try {
-      const status = await window.electronAPI.getServerStatus();
+      const status = await remote._.getServerStatus();
 
       if (status.isRunning && status.serverInfo) {
         this.showServerStatus(status.serverInfo);
@@ -182,13 +180,9 @@ class LocalShareRenderer {
   }
 
   private setupIpcListeners(): void {
-    if (window.electronAPI.onServerStarted) {
-      window.electronAPI.onServerStarted((_, serverInfo) => {
-        if (serverInfo) {
-          this.showServerStatus(serverInfo);
-        }
-      });
-    }
+    remote.register("serverStarted", async (serverInfo) => {
+      this.showServerStatus(serverInfo);
+    });
   }
 
   private showServerStatus(serverInfo: ServerInfo): void {
