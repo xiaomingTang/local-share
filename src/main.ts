@@ -1,8 +1,16 @@
-import { app, BrowserWindow, ipcMain, Menu, Tray } from "electron";
+import { app, BrowserWindow, Menu, Tray } from "electron";
 import { p } from "./utils/fs-utils";
-import { WebServer } from "./server/web-server";
-import { addContextMenu, removeContextMenu } from "./utils/registry-manager";
-import { remote } from "./remote";
+import type { WebServer } from "./server/web-server";
+
+let remoteModulePromise: Promise<typeof import("./remote")> | null = null;
+
+async function getRemote() {
+  if (!remoteModulePromise) {
+    remoteModulePromise = import("./remote");
+  }
+  const remoteModule = await remoteModulePromise;
+  return remoteModule.remote;
+}
 
 class LocalShareApp {
   private mainWindow: BrowserWindow | null = null;
@@ -25,14 +33,15 @@ class LocalShareApp {
   }
 
   private async initializeApp() {
-    // wsl 下渲染加速有问题，禁用硬件加速
-    app.disableHardwareAcceleration();
-
     app.whenReady().then(() => {
       this.createWindow();
-      this.setupTray();
-      this.setupIPC();
-      this.handleCommandLineShare();
+      void this.setupIPC();
+
+      // 托盘 / 命令行分享属于非首屏必需，延后到窗口可见后再做。
+      setImmediate(() => {
+        this.setupTray();
+        void this.handleCommandLineShare();
+      });
     });
 
     app.on("window-all-closed", () => {
@@ -126,16 +135,25 @@ class LocalShareApp {
     }
   }
 
-  private setupIPC() {
+  private async setupIPC() {
+    const remote = await getRemote();
+
     // 添加右键菜单
-    remote.register("addContextMenu", async () => addContextMenu());
+    remote.register("addContextMenu", async () => {
+      const { addContextMenu } = await import("./utils/registry-manager");
+      return addContextMenu();
+    });
 
     // 移除右键菜单
-    remote.register("removeContextMenu", async () => removeContextMenu());
+    remote.register("removeContextMenu", async () => {
+      const { removeContextMenu } = await import("./utils/registry-manager");
+      return removeContextMenu();
+    });
 
     // 开始文件夹共享
     remote.register("shareFolder", async (folderPath: string) => {
       if (!this.webServer) {
+        const { WebServer } = await import("./server/web-server");
         this.webServer = new WebServer();
       }
 
@@ -199,7 +217,10 @@ class LocalShareApp {
     const folderPath = args[shareIndex + 1];
 
     try {
+      const remote = await getRemote();
+
       if (!this.webServer) {
+        const { WebServer } = await import("./server/web-server");
         this.webServer = new WebServer();
       }
 

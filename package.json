@@ -28,7 +28,7 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
-    "@zimi/remote": "^0.2.3",
+    "@zimi/remote": "^0.2.4",
     "express": "^4.18.2",
     "iconv-lite": "^0.7.1",
     "lodash-es": "^4.17.22",
@@ -40,6 +40,9 @@
     "appId": "com.localshare.app",
     "productName": "LocalShare",
     "compression": "store",
+    "electronLanguages": [
+      "zh-CN"
+    ],
     "asar": true,
     "asarUnpack": [
       "**/*.node",
