@@ -1,6 +1,6 @@
 {
   "name": "local-share",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "本地文件共享桌面应用",
   "main": "src/main.js",
   "scripts": {
@@ -72,7 +72,7 @@
       }
     ],
     "win": {
-      "target": "dir",
+      "target": "zip",
       "icon": "assets/icon.ico"
     },
     "portable": {
