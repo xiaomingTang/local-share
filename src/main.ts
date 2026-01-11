@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, Tray, shell } from "electron";
+import { app, BrowserWindow, Menu, Tray, shell, clipboard } from "electron";
 import { p } from "./utils/fs-utils";
 import type { WebServer } from "./server/web-server";
 
@@ -87,6 +87,11 @@ class LocalShareApp {
 
     // 隐藏菜单栏
     this.mainWindow.setMenu(null);
+
+    // 关闭主窗口时停止服务（例如托盘仍在运行时）
+    this.mainWindow.on("close", () => {
+      this.stopWebServer();
+    });
   }
 
   private setupTray() {
@@ -192,6 +197,13 @@ class LocalShareApp {
       if (err) {
         throw new Error(err);
       }
+    });
+
+    // 写入剪贴板（用于点击复制访问地址等）
+    remote.register("copyToClipboard", async (text: string) => {
+      const trimmed = text?.trim();
+      if (!trimmed || trimmed === "-") return;
+      clipboard.writeText(trimmed);
     });
 
     // 获取服务器状态

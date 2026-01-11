@@ -111,6 +111,30 @@ class LocalShareRenderer {
   }
 
   private bindEvents(): void {
+    // 访问地址：点击复制到剪贴板
+    const copyServerUrl = async (): Promise<void> => {
+      const url = this.elements.serverUrl.textContent?.trim();
+      if (!url || url === "-") return;
+
+      try {
+        await remote._.copyToClipboard(url);
+        this.showNotification("已复制访问地址", "success");
+      } catch (error) {
+        const e = toError(error);
+        this.showNotification(`复制失败：${e.message}`, "error");
+      }
+    };
+
+    this.elements.serverUrl.addEventListener("click", () => {
+      void copyServerUrl();
+    });
+    this.elements.serverUrl.addEventListener("keydown", (evt) => {
+      if (evt.key === "Enter" || evt.key === " ") {
+        evt.preventDefault();
+        void copyServerUrl();
+      }
+    });
+
     // 共享文件夹路径：点击用资源管理器打开
     const openSharedFolder = async (): Promise<void> => {
       const folderPath = this.elements.sharedFolder.textContent?.trim();
@@ -214,6 +238,7 @@ class LocalShareRenderer {
     this.elements.sharedFolder.textContent = serverInfo.sharedFolder;
     this.elements.sharedFolder.classList.add("clickable");
     this.elements.serverUrl.textContent = serverInfo.url;
+    this.elements.serverUrl.classList.add("clickable");
 
     // 显示二维码（如果有的话）
     if (serverInfo.qrCode) {
@@ -228,6 +253,7 @@ class LocalShareRenderer {
     this.elements.sharedFolder.textContent = "-";
     this.elements.sharedFolder.classList.remove("clickable");
     this.elements.serverUrl.textContent = "-";
+    this.elements.serverUrl.classList.remove("clickable");
     this.elements.qrCode.style.display = "none";
   }
 

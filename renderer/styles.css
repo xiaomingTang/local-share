@@ -237,6 +237,19 @@ header p {
   color: #3498db;
 }
 
+.url-text.clickable {
+  cursor: copy;
+}
+
+.url-text.clickable:hover {
+  color: #2b7cb7;
+}
+
+.url-text.clickable:focus {
+  outline: 2px solid rgba(52, 152, 219, 0.35);
+  outline-offset: 2px;
+}
+
 /* 二维码容器 */
 .qr-code-container {
   text-align: center;
