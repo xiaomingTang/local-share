@@ -41,13 +41,17 @@
         <div class="qr-code-container">
           <img id="qrCode" alt="二维码" style="display: none;">
         </div>
-        <div class="status-item">
+        <div class="pair-container">
           <span class="label">访问地址:</span>
-          <span id="serverUrl" class="url-text">-</span>
+          <span class="value-container">
+            <span id="serverUrl" class="url-text" role="link" tabindex="0" title="点击复制访问地址">-</span>
+          </span>
         </div>
-        <div class="status-item">
+        <div class="pair-container">
           <span class="label">共享文件夹:</span>
-          <span id="sharedFolder" class="path-text">-</span>
+          <span class="value-container">
+            <span id="sharedFolder" class="path-text" role="link" tabindex="0" title="点击打开文件夹">-</span>
+          </span>
         </div>
         <button id="stopServer" class="btn btn-danger">
           停止服务
@@ -69,7 +73,7 @@
     <div id="notification" class="notification" style="display: none;"></div>
   </div>
 
-  <script src="renderer.js"></script>
+  <script type="module" src="renderer.global.js"></script>
 </body>
 
 </html>

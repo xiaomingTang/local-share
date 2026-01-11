@@ -14,6 +14,6 @@
     "moduleResolution": "node",
     "sourceMap": true
   },
-  "include": ["src/**/*", "renderer/**/*", "web/**/*"],
+  "include": ["src/**/*", "renderer/**/*", "web/**/*", "common/**/*"],
   "exclude": ["node_modules", "dist", "release"]
 }

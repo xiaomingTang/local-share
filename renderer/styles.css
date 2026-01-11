@@ -23,9 +23,9 @@ body {
 }
 
 .container {
-  max-width: 400px;
+  max-width: 420px;
   margin: auto;
-  padding: 20px;
+  padding: 16px;
   background: white;
   min-height: 100vh;
 }
@@ -184,38 +184,70 @@ header p {
   font-size: 16px;
 }
 
-.status-item {
+.pair-container {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: flex-start;
   margin-bottom: 12px;
   flex-wrap: wrap;
 }
 
-.label {
+.pair-container .label {
   font-weight: 500;
   color: #555;
   min-width: 80px;
 }
 
+.pair-container .value-container {
+  flex: 1;
+  margin-left: 12px;
+  text-align: right;
+  word-break: break-all;
+  font-size: 12px;
+  font-family: monospace;
+}
+
+@media (max-width: 400px) {
+  .pair-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
 .path-text {
   color: #7f8c8d;
-  font-family: monospace;
-  font-size: 12px;
-  word-break: break-all;
-  text-align: right;
-  flex: 1;
-  margin-left: 10px;
+}
+
+.path-text.clickable {
+  color: #3498db;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.path-text.clickable:hover {
+  color: #2b7cb7;
+}
+
+.path-text.clickable:focus {
+  outline: 2px solid rgba(52, 152, 219, 0.35);
+  outline-offset: 2px;
 }
 
 .url-text {
   color: #3498db;
-  font-family: monospace;
-  font-size: 12px;
-  word-break: break-all;
-  text-align: right;
-  flex: 1;
-  margin-left: 10px;
+}
+
+.url-text.clickable {
+  cursor: copy;
+}
+
+.url-text.clickable:hover {
+  color: #2b7cb7;
+}
+
+.url-text.clickable:focus {
+  outline: 2px solid rgba(52, 152, 219, 0.35);
+  outline-offset: 2px;
 }
 
 /* 二维码容器 */
@@ -293,11 +325,7 @@ header p {
 }
 
 /* 响应式设计 */
-@media (max-width: 480px) {
-  .container {
-    padding: 15px;
-  }
-
+@media (max-width: 400px) {
   .status-item {
     flex-direction: column;
     align-items: stretch;
