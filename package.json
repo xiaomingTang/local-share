@@ -28,7 +28,7 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
-    "@zimi/remote": "^0.2.4",
+    "@zimi/remote": "^0.2.5",
     "express": "^4.18.2",
     "iconv-lite": "^0.7.1",
     "lodash-es": "^4.17.22",
@@ -57,6 +57,8 @@
       "web/**/*",
       "common/**/*",
       "assets/**/*",
+      "!**/node_modules/electron{,/**/*}",
+      "!**/node_modules/.pnpm/electron@*{,/**/*}",
       "!**/*.map",
       "!**/test/**",
       "!**/tests/**",
