@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, Tray } from "electron";
+import { app, BrowserWindow, Menu, Tray, shell } from "electron";
 import { p } from "./utils/fs-utils";
 import type { WebServer } from "./server/web-server";
 
@@ -60,7 +60,7 @@ class LocalShareApp {
 
   private createWindow() {
     this.mainWindow = new BrowserWindow({
-      width: app.isPackaged ? 400 : 1000,
+      width: app.isPackaged ? 420 : 1000,
       height: 600,
       resizable: true,
       webPreferences: {
@@ -168,6 +168,30 @@ class LocalShareApp {
     // 停止服务器
     remote.register("stopServer", async () => {
       this.stopWebServer();
+    });
+
+    // 在资源管理器中打开共享文件夹
+    remote.register("openFolderInExplorer", async (folderPath: string) => {
+      const trimmed = folderPath?.trim();
+      if (!trimmed || trimmed === "-") return;
+
+      const fs = await import("fs");
+      const path = await import("path");
+
+      const resolvedPath = path.resolve(trimmed);
+      if (!fs.existsSync(resolvedPath)) {
+        throw new Error(`文件夹不存在：${resolvedPath}`);
+      }
+
+      const stat = fs.statSync(resolvedPath);
+      if (!stat.isDirectory()) {
+        throw new Error(`不是文件夹：${resolvedPath}`);
+      }
+
+      const err = await shell.openPath(resolvedPath);
+      if (err) {
+        throw new Error(err);
+      }
     });
 
     // 获取服务器状态

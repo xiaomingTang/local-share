@@ -111,6 +111,33 @@ class LocalShareRenderer {
   }
 
   private bindEvents(): void {
+    // 共享文件夹路径：点击用资源管理器打开
+    this.elements.sharedFolder.setAttribute("role", "link");
+    this.elements.sharedFolder.setAttribute("tabindex", "0");
+    this.elements.sharedFolder.setAttribute("title", "点击打开文件夹");
+
+    const openSharedFolder = async (): Promise<void> => {
+      const folderPath = this.elements.sharedFolder.textContent?.trim();
+      if (!folderPath || folderPath === "-") return;
+
+      try {
+        await remote._.openFolderInExplorer(folderPath);
+      } catch (error) {
+        const e = toError(error);
+        this.showNotification(`打开文件夹失败：${e.message}`, "error");
+      }
+    };
+
+    this.elements.sharedFolder.addEventListener("click", () => {
+      void openSharedFolder();
+    });
+    this.elements.sharedFolder.addEventListener("keydown", (evt) => {
+      if (evt.key === "Enter" || evt.key === " ") {
+        evt.preventDefault();
+        void openSharedFolder();
+      }
+    });
+
     // 添加右键菜单
     this.elements.addContextMenu.addEventListener("click", async () => {
       try {
@@ -189,6 +216,7 @@ class LocalShareRenderer {
     this.elements.serverStatus.style.display = "block";
 
     this.elements.sharedFolder.textContent = serverInfo.sharedFolder;
+    this.elements.sharedFolder.classList.add("clickable");
     this.elements.serverUrl.textContent = serverInfo.url;
 
     // 显示二维码（如果有的话）
@@ -202,6 +230,7 @@ class LocalShareRenderer {
     this.elements.serverStatus.style.display = "none";
 
     this.elements.sharedFolder.textContent = "-";
+    this.elements.sharedFolder.classList.remove("clickable");
     this.elements.serverUrl.textContent = "-";
     this.elements.qrCode.style.display = "none";
   }

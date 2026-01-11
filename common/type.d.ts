@@ -11,6 +11,7 @@ declare global {
     addContextMenu: (data?: void) => Promise<void>;
     removeContextMenu: (data?: void) => Promise<void>;
     shareFolder: (folderPath: string) => Promise<ServerInfo>;
+    openFolderInExplorer: (folderPath: string) => Promise<void>;
     stopServer: (data?: void) => Promise<void>;
     getServerStatus: (data?: void) => Promise<{
       isRunning: boolean;
