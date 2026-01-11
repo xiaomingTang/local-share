@@ -112,10 +112,6 @@ class LocalShareRenderer {
 
   private bindEvents(): void {
     // 共享文件夹路径：点击用资源管理器打开
-    this.elements.sharedFolder.setAttribute("role", "link");
-    this.elements.sharedFolder.setAttribute("tabindex", "0");
-    this.elements.sharedFolder.setAttribute("title", "点击打开文件夹");
-
     const openSharedFolder = async (): Promise<void> => {
       const folderPath = this.elements.sharedFolder.textContent?.trim();
       if (!folderPath || folderPath === "-") return;
