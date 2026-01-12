@@ -230,6 +230,15 @@ class LocalShareRenderer {
       const el = this.elements.autoLaunchStatus;
 
       try {
+        // 点击时先进入 loading（检测当前状态）
+        el.classList.remove("state-enabled", "state-disabled");
+        el.textContent = "检测中...";
+        el.setAttribute("title", "检测中...");
+        el.classList.add("disabled");
+        el.classList.remove("underline");
+        el.classList.remove("clickable");
+        el.setAttribute("aria-disabled", "true");
+
         el.classList.remove("state-enabled", "state-disabled");
         el.textContent = "处理中...";
         el.setAttribute("title", "处理中...");
@@ -243,6 +252,10 @@ class LocalShareRenderer {
           await this.refreshAutoLaunchStatus();
           return;
         }
+
+        // 真正切换前保持 processing 状态
+        el.textContent = "处理中...";
+        el.setAttribute("title", "处理中...");
 
         const targetEnabled = !status.enabled;
         await remote._.setAutoLaunchEnabled(targetEnabled);
