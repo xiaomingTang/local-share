@@ -19,21 +19,10 @@
     </header>
 
     <main>
-      <!-- 右键菜单管理面板（可折叠） -->
-      <div id="contextPanel" class="context-panel">
-        <div id="contextPanelHeader" class="context-panel-header">
-          <div class="context-panel-title">右键菜单管理</div>
-          <button id="contextToggleBtn" class="context-toggle-btn" title="展开/折叠" aria-expanded="true"
-            style="display: none;">⚙</button>
-        </div>
-        <div id="contextContent" class="context-panel-content">
-          <button id="addContextMenu" class="btn btn-primary">
-            添加到文件夹右键菜单
-          </button>
-          <button id="removeContextMenu" class="btn btn-secondary">
-            移除文件夹右键菜单
-          </button>
-        </div>
+      <!-- 右键菜单（常驻轻量行） -->
+      <div class="mini-row" aria-live="polite">
+        <span class="mini-row-label">右键菜单</span>
+        <span id="contextMenuStatus" class="mini-row-value" role="link" tabindex="0" title="检测中...">检测中...</span>
       </div>
 
       <div id="serverStatus" class="status-panel" style="display: none;">
@@ -61,10 +50,10 @@
       <div class="info-panel">
         <h3>使用说明</h3>
         <ol>
-          <li>点击"添加到文件夹右键菜单"注册右键菜单功能</li>
-          <li>在任意文件夹上右键，选择"共享此文件夹"</li>
-          <li>应用会生成二维码和访问链接</li>
-          <li>手机和电脑连接同一个无线网后，扫描二维码即可访问文件夹内容</li>
+          <li>点击上方“右键菜单”的状态（未启用/已启用）来启用或移除右键菜单</li>
+          <li>在任意文件夹（或文件夹空白处）右键，选择“共享此文件夹”</li>
+          <li>应用会显示二维码和访问地址</li>
+          <li>手机与电脑连接同一局域网后，扫描二维码即可访问文件夹内容</li>
           <li>支持文件预览、下载和上传功能</li>
         </ol>
       </div>

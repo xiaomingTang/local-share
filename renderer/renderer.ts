@@ -3,18 +3,8 @@ import { toError } from "../src/error/utils";
 import { remote, waitUntilRemoteReady } from "./remote";
 
 class LocalShareRenderer {
-  // MUI-like ExpandLess SVG (up chevron)
-  private readonly EXPAND_LESS_SVG = `
-    <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-      <path fill="currentColor" d="M12 8.59L16.59 13.17 18 11.76 12 5.76 6 11.76 7.41 13.17z"></path>
-    </svg>
-  `;
   private elements: {
-    contextPanel?: HTMLElement;
-    contextPanelHeader?: HTMLElement;
-    contextToggleBtn?: HTMLButtonElement;
-    addContextMenu: HTMLButtonElement;
-    removeContextMenu: HTMLButtonElement;
+    contextMenuStatus: HTMLElement;
     serverStatus: HTMLElement;
     statusText: HTMLElement;
     sharedFolder: HTMLElement;
@@ -26,12 +16,9 @@ class LocalShareRenderer {
 
   constructor() {
     this.elements = {
-      addContextMenu: document.getElementById(
-        "addContextMenu"
-      ) as HTMLButtonElement,
-      removeContextMenu: document.getElementById(
-        "removeContextMenu"
-      ) as HTMLButtonElement,
+      contextMenuStatus: document.getElementById(
+        "contextMenuStatus"
+      ) as HTMLElement,
       serverStatus: document.getElementById("serverStatus") as HTMLElement,
       statusText: document.getElementById("statusText") as HTMLElement,
       sharedFolder: document.getElementById("sharedFolder") as HTMLElement,
@@ -39,13 +26,6 @@ class LocalShareRenderer {
       qrCode: document.getElementById("qrCode") as HTMLImageElement,
       stopServer: document.getElementById("stopServer") as HTMLButtonElement,
       notification: document.getElementById("notification") as HTMLElement,
-      contextPanel: document.getElementById("contextPanel") as HTMLElement,
-      contextPanelHeader: document.getElementById(
-        "contextPanelHeader"
-      ) as HTMLElement,
-      contextToggleBtn: document.getElementById(
-        "contextToggleBtn"
-      ) as HTMLButtonElement,
     };
 
     this.init();
@@ -53,60 +33,50 @@ class LocalShareRenderer {
 
   private async init() {
     await waitUntilRemoteReady();
-    this.initializeContextPanel();
     this.bindEvents();
+    void this.refreshContextMenuStatus();
     this.checkServerStatus();
     this.setupIpcListeners();
   }
 
-  private async initializeContextPanel(): Promise<void> {
+  private async refreshContextMenuStatus(): Promise<void> {
     try {
-      // 如果 preload 中暴露了 getCommandlineShare，则查询
-      const resp = await remote._.getCommandlineShare();
+      this.elements.contextMenuStatus.textContent = "检测中...";
+      this.elements.contextMenuStatus.setAttribute("title", "检测中...");
+      this.elements.contextMenuStatus.classList.remove("clickable");
+      this.elements.contextMenuStatus.classList.remove("underline");
+      this.elements.contextMenuStatus.classList.add("disabled");
+      this.elements.contextMenuStatus.setAttribute("aria-disabled", "true");
 
-      const content = document.getElementById("contextContent");
-      const toggle = this.elements.contextToggleBtn;
-
-      if (!resp.commandLineShare) {
-        // 不支持折叠，始终展开并隐藏切换按钮
-        if (toggle) {
-          toggle.style.display = "none";
-        }
-        if (content) {
-          content.classList.remove("collapsed");
-        }
-        return;
+      const resp = await remote._.checkContextMenuExists();
+      if (resp.exists) {
+        this.elements.contextMenuStatus.textContent = "已启用";
+        this.elements.contextMenuStatus.setAttribute(
+          "title",
+          "点击移除右键菜单"
+        );
+      } else {
+        this.elements.contextMenuStatus.textContent = "未启用";
+        this.elements.contextMenuStatus.setAttribute(
+          "title",
+          "点击启用右键菜单"
+        );
       }
 
-      // 显示折叠按钮，面板默认折叠
-      if (toggle) {
-        toggle.style.display = "inline-flex";
-        toggle.textContent = "⚙"; // 设置图标表示可展开
-        toggle.setAttribute("aria-expanded", "false");
-      }
-      if (content) {
-        content.classList.add("collapsed");
-      }
-      // 点击切换
-      toggle?.addEventListener("click", () => {
-        const isCollapsed = content?.classList.contains("collapsed");
-        if (isCollapsed) {
-          content?.classList.remove("collapsed");
-          // 使用 MUI 风格的向上箭头 SVG
-          toggle!.innerHTML = this.EXPAND_LESS_SVG;
-          toggle!.setAttribute("aria-expanded", "true");
-        } else {
-          content?.classList.add("collapsed");
-          toggle!.textContent = "⚙";
-          toggle!.setAttribute("aria-expanded", "false");
-        }
-      });
+      this.elements.contextMenuStatus.classList.add("clickable");
+      this.elements.contextMenuStatus.classList.add("underline");
+      this.elements.contextMenuStatus.classList.remove("disabled");
+      this.elements.contextMenuStatus.setAttribute("aria-disabled", "false");
     } catch (error) {
-      console.warn("无法查询 commandLineShare 状态，默认展开面板：", error);
-      const toggle = this.elements.contextToggleBtn;
-      const content = document.getElementById("contextContent");
-      if (toggle) toggle.style.display = "none";
-      if (content) content.classList.remove("collapsed");
+      const e = toError(error);
+      this.elements.contextMenuStatus.textContent = `检测失败：${e.message}`;
+      this.elements.contextMenuStatus.setAttribute("title", "点击重新检测");
+      this.elements.contextMenuStatus.classList.add("clickable");
+      this.elements.contextMenuStatus.classList.remove("disabled");
+      this.elements.contextMenuStatus.classList.remove("underline");
+      this.elements.contextMenuStatus.setAttribute("aria-disabled", "false");
+    } finally {
+      // no-op
     }
   }
 
@@ -158,38 +128,43 @@ class LocalShareRenderer {
       }
     });
 
-    // 添加右键菜单
-    this.elements.addContextMenu.addEventListener("click", async () => {
+    // 右键菜单开关（自动检测当前状态）
+    // 右键菜单状态文本：点击即切换启用/移除
+    const toggleContextMenu = async (): Promise<void> => {
       try {
-        this.elements.addContextMenu.disabled = true;
-        this.elements.addContextMenu.textContent = "添加中...";
+        // 先尝试检测当前状态
+        this.elements.contextMenuStatus.textContent = "处理中...";
+        this.elements.contextMenuStatus.setAttribute("title", "处理中...");
+        this.elements.contextMenuStatus.classList.add("disabled");
+        this.elements.contextMenuStatus.classList.remove("underline");
+        this.elements.contextMenuStatus.setAttribute("aria-disabled", "true");
 
-        await remote._.addContextMenu();
+        const status = await remote._.checkContextMenuExists();
+        const targetEnabled = !status.exists;
 
-        this.showNotification("添加右键菜单成功！", "success");
+        await remote._.setContextMenuEnabled(targetEnabled);
+        await this.refreshContextMenuStatus();
+
+        this.showNotification(
+          targetEnabled ? "已开启右键菜单" : "已关闭右键菜单",
+          targetEnabled ? "success" : "info"
+        );
       } catch (error) {
         const e = toError(error);
-        this.showNotification(`添加失败：${e.message}`, "error");
+        this.showNotification(`操作失败：${e.message}`, "error");
+        await this.refreshContextMenuStatus();
       } finally {
-        this.elements.addContextMenu.disabled = false;
-        this.elements.addContextMenu.textContent = "添加到文件夹右键菜单";
+        // no-op (refreshContextMenuStatus 会恢复可点击状态)
       }
+    };
+
+    this.elements.contextMenuStatus.addEventListener("click", () => {
+      void toggleContextMenu();
     });
-
-    // 移除右键菜单
-    this.elements.removeContextMenu.addEventListener("click", async () => {
-      try {
-        this.elements.removeContextMenu.disabled = true;
-        this.elements.removeContextMenu.textContent = "移除中...";
-
-        await remote._.removeContextMenu();
-        this.showNotification("移除右键菜单成功！", "info");
-      } catch (error) {
-        const e = toError(error);
-        this.showNotification(`移除失败：${e.message}`, "error");
-      } finally {
-        this.elements.removeContextMenu.disabled = false;
-        this.elements.removeContextMenu.textContent = "移除文件夹右键菜单";
+    this.elements.contextMenuStatus.addEventListener("keydown", (evt) => {
+      if (evt.key === "Enter" || evt.key === " ") {
+        evt.preventDefault();
+        void toggleContextMenu();
       }
     });
 

@@ -88,16 +88,32 @@ class LocalShareApp {
   private async setupIPC() {
     const remote = await getRemote();
 
-    // 添加右键菜单
-    remote.register("addContextMenu", async () => {
-      const { addContextMenu } = await import("./utils/registry-manager");
-      return addContextMenu();
+    // 检测右键菜单是否已存在
+    remote.register("checkContextMenuExists", async () => {
+      const { checkContextMenuExists } = await import(
+        "./utils/registry-manager"
+      );
+      const exists = await checkContextMenuExists();
+      return { exists };
     });
 
-    // 移除右键菜单
-    remote.register("removeContextMenu", async () => {
-      const { removeContextMenu } = await import("./utils/registry-manager");
-      return removeContextMenu();
+    // 通过开关启用/禁用右键菜单（内部根据当前状态决定是否执行）
+    remote.register("setContextMenuEnabled", async (enabled: boolean) => {
+      const { addContextMenu, removeContextMenu, checkContextMenuExists } =
+        await import("./utils/registry-manager");
+
+      const exists = await checkContextMenuExists();
+      if (enabled) {
+        if (!exists) {
+          await addContextMenu();
+        }
+      } else {
+        if (exists) {
+          await removeContextMenu();
+        }
+      }
+
+      return { exists: await checkContextMenuExists() };
     });
 
     // 开始文件夹共享

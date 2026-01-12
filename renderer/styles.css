@@ -49,75 +49,45 @@ header p {
   font-size: 14px;
 }
 
-/* 按钮组样式 */
-.button-group {
-  margin-bottom: 30px;
-}
-
-/* 右键菜单管理面板 */
-.context-panel {
-  background-color: #f8f9fa;
-  border: 1px solid #e9ecef;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  overflow: hidden;
-}
-
-.context-panel-header {
+/* 轻量常驻行 */
+.mini-row {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
-  border-bottom: 1px solid #eee;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.6),
-    rgba(255, 255, 255, 0.3)
-  );
+  gap: 12px;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+  border: 1px solid #e9ecef;
+  border-radius: 10px;
+  background: #fafbfc;
 }
 
-.context-panel-title {
-  font-weight: 600;
+.mini-row-label {
   color: #2c3e50;
+  font-weight: 600;
 }
 
-.context-toggle-btn {
-  background: transparent;
-  border: none;
-  font-size: 18px;
+.mini-row-value {
+  font-size: 12px;
+  font-family: monospace;
+  color: #3498db;
   cursor: pointer;
-  width: 36px;
-  height: 36px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
+  user-select: none;
 }
 
-.context-toggle-btn:hover {
-  background: rgba(0, 0, 0, 0.04);
+.mini-row-value:hover {
+  text-decoration: underline;
 }
 
-.context-panel-content {
-  padding: 12px 16px 18px 16px;
-  transition: max-height 300ms ease, padding 300ms ease, opacity 300ms ease;
-  overflow: hidden;
-  max-height: 1000px; /* expanded state */
-  opacity: 1;
+.mini-row-value.underline {
+  text-decoration: underline;
 }
 
-.context-panel-content.collapsed {
-  max-height: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-  opacity: 0;
-}
-
-/* SVG icon sizing for toggle button */
-.context-toggle-btn svg {
-  width: 20px;
-  height: 20px;
-  display: block;
+.mini-row-value.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+  text-decoration: none;
 }
 
 .btn {
@@ -326,11 +296,6 @@ header p {
 
 /* 响应式设计 */
 @media (max-width: 400px) {
-  .status-item {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
   .path-text,
   .url-text {
     text-align: left;

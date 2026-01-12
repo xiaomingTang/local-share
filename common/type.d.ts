@@ -8,8 +8,8 @@ export interface ServerInfo {
 
 declare global {
   type FuncsFromMain = {
-    addContextMenu: (data?: void) => Promise<void>;
-    removeContextMenu: (data?: void) => Promise<void>;
+    checkContextMenuExists: (data?: void) => Promise<{ exists: boolean }>;
+    setContextMenuEnabled: (enabled: boolean) => Promise<{ exists: boolean }>;
     shareFolder: (folderPath: string) => Promise<ServerInfo>;
     openFolderInExplorer: (folderPath: string) => Promise<void>;
     copyToClipboard: (text: string) => Promise<void>;
