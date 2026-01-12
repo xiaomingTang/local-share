@@ -19,11 +19,18 @@
     </header>
 
     <main>
-      <!-- 右键菜单（常驻轻量行） -->
-      <div class="mini-row" aria-live="polite">
-        <span class="mini-row-label">右键菜单</span>
-        <span id="contextMenuStatus" class="mini-row-value" role="link" tabindex="0" title="检测中...">检测中...</span>
-      </div>
+      <!-- 系统集成设置（同一区域） -->
+      <section class="mini-group" aria-label="系统集成设置">
+        <div class="mini-row" aria-live="polite">
+          <span class="mini-row-label">右键菜单</span>
+          <span id="contextMenuStatus" class="mini-row-value" role="link" tabindex="0" title="检测中...">检测中...</span>
+        </div>
+
+        <div class="mini-row" aria-live="polite">
+          <span class="mini-row-label">开机自启</span>
+          <span id="autoLaunchStatus" class="mini-row-value" role="link" tabindex="0" title="检测中...">检测中...</span>
+        </div>
+      </section>
 
       <div id="serverStatus" class="status-panel" style="display: none;">
         <h3>服务信息</h3>

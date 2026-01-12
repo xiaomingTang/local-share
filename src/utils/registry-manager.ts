@@ -29,12 +29,13 @@ export async function addContextMenu(): Promise<void> {
       ? path.join(process.resourcesPath, "assets", "folder-share.ico")
       : p("assets/folder-share.ico");
 
+    // 统一使用 --share=<folder> 形式，避免 argv 被 Chromium flags 干扰
     const command = app.isPackaged
-      ? `"${electronExePath}" --share "%1"`
-      : `"${electronExePath}" "${app.getAppPath()}" --share "%1"`;
+      ? `"${electronExePath}" --share="%1"`
+      : `"${electronExePath}" "${app.getAppPath()}" --share="%1"`;
     const commandBackground = app.isPackaged
-      ? `"${electronExePath}" --share "%V"`
-      : `"${electronExePath}" "${app.getAppPath()}" --share "%V"`;
+      ? `"${electronExePath}" --share="%V"`
+      : `"${electronExePath}" "${app.getAppPath()}" --share="%V"`;
 
     const cmds = [
       `add "${CONTEXT_MENU_KEY}" /ve /d "共享此文件夹" /f`,

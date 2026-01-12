@@ -10,6 +10,12 @@ declare global {
   type FuncsFromMain = {
     checkContextMenuExists: (data?: void) => Promise<{ exists: boolean }>;
     setContextMenuEnabled: (enabled: boolean) => Promise<{ exists: boolean }>;
+    getAutoLaunchStatus: (
+      data?: void
+    ) => Promise<{ supported: boolean; enabled: boolean }>;
+    setAutoLaunchEnabled: (
+      enabled: boolean
+    ) => Promise<{ supported: boolean; enabled: boolean }>;
     shareFolder: (folderPath: string) => Promise<ServerInfo>;
     openFolderInExplorer: (folderPath: string) => Promise<void>;
     copyToClipboard: (text: string) => Promise<void>;

@@ -50,6 +50,25 @@ header p {
 }
 
 /* 轻量常驻行 */
+.mini-group {
+  margin-bottom: 16px;
+  border: 1px solid #e9ecef;
+  border-radius: 10px;
+  background: #fafbfc;
+  overflow: hidden;
+}
+
+.mini-group .mini-row {
+  margin-bottom: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.mini-group .mini-row + .mini-row {
+  border-top: 1px solid #e9ecef;
+}
+
 .mini-row {
   display: flex;
   align-items: center;
@@ -73,6 +92,14 @@ header p {
   color: #3498db;
   cursor: pointer;
   user-select: none;
+}
+
+.mini-row-value.state-enabled {
+  color: #27ae60;
+}
+
+.mini-row-value.state-disabled {
+  color: #6b7785;
 }
 
 .mini-row-value:hover {

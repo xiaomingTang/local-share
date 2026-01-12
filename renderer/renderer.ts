@@ -5,6 +5,7 @@ import { remote, waitUntilRemoteReady } from "./remote";
 class LocalShareRenderer {
   private elements: {
     contextMenuStatus: HTMLElement;
+    autoLaunchStatus: HTMLElement;
     serverStatus: HTMLElement;
     statusText: HTMLElement;
     sharedFolder: HTMLElement;
@@ -18,6 +19,9 @@ class LocalShareRenderer {
     this.elements = {
       contextMenuStatus: document.getElementById(
         "contextMenuStatus"
+      ) as HTMLElement,
+      autoLaunchStatus: document.getElementById(
+        "autoLaunchStatus"
       ) as HTMLElement,
       serverStatus: document.getElementById("serverStatus") as HTMLElement,
       statusText: document.getElementById("statusText") as HTMLElement,
@@ -35,46 +39,100 @@ class LocalShareRenderer {
     await waitUntilRemoteReady();
     this.bindEvents();
     void this.refreshContextMenuStatus();
+    void this.refreshAutoLaunchStatus();
     this.checkServerStatus();
     this.setupIpcListeners();
   }
 
+  private async refreshAutoLaunchStatus(): Promise<void> {
+    try {
+      const el = this.elements.autoLaunchStatus;
+      el.textContent = "检测中...";
+      el.setAttribute("title", "检测中...");
+      el.classList.remove("clickable");
+      el.classList.remove("underline");
+      el.classList.remove("state-enabled", "state-disabled");
+      el.classList.add("disabled");
+      el.setAttribute("aria-disabled", "true");
+
+      const status = await remote._.getAutoLaunchStatus();
+      if (!status.supported) {
+        el.textContent = "不支持";
+        el.setAttribute("title", "当前系统不支持开机自启配置");
+        el.classList.add("disabled");
+        el.classList.remove("underline");
+        el.classList.remove("clickable");
+        el.setAttribute("aria-disabled", "true");
+        return;
+      }
+
+      if (status.enabled) {
+        el.textContent = "已启用";
+        el.setAttribute("title", "点击关闭开机自启");
+        el.classList.add("state-enabled");
+        el.classList.remove("state-disabled");
+      } else {
+        el.textContent = "未启用";
+        el.setAttribute("title", "点击启用开机自启");
+        el.classList.add("state-disabled");
+        el.classList.remove("state-enabled");
+      }
+
+      el.classList.add("clickable");
+      el.classList.add("underline");
+      el.classList.remove("disabled");
+      el.setAttribute("aria-disabled", "false");
+    } catch (error) {
+      const e = toError(error);
+      const el = this.elements.autoLaunchStatus;
+      el.textContent = `检测失败：${e.message}`;
+      el.setAttribute("title", "点击重新检测");
+      el.classList.add("clickable");
+      el.classList.remove("disabled");
+      el.classList.remove("underline");
+      el.classList.remove("state-enabled", "state-disabled");
+      el.setAttribute("aria-disabled", "false");
+    }
+  }
+
   private async refreshContextMenuStatus(): Promise<void> {
     try {
-      this.elements.contextMenuStatus.textContent = "检测中...";
-      this.elements.contextMenuStatus.setAttribute("title", "检测中...");
-      this.elements.contextMenuStatus.classList.remove("clickable");
-      this.elements.contextMenuStatus.classList.remove("underline");
-      this.elements.contextMenuStatus.classList.add("disabled");
-      this.elements.contextMenuStatus.setAttribute("aria-disabled", "true");
+      const el = this.elements.contextMenuStatus;
+      el.textContent = "检测中...";
+      el.setAttribute("title", "检测中...");
+      el.classList.remove("clickable");
+      el.classList.remove("underline");
+      el.classList.remove("state-enabled", "state-disabled");
+      el.classList.add("disabled");
+      el.setAttribute("aria-disabled", "true");
 
       const resp = await remote._.checkContextMenuExists();
       if (resp.exists) {
-        this.elements.contextMenuStatus.textContent = "已启用";
-        this.elements.contextMenuStatus.setAttribute(
-          "title",
-          "点击移除右键菜单"
-        );
+        el.textContent = "已启用";
+        el.setAttribute("title", "点击移除右键菜单");
+        el.classList.add("state-enabled");
+        el.classList.remove("state-disabled");
       } else {
-        this.elements.contextMenuStatus.textContent = "未启用";
-        this.elements.contextMenuStatus.setAttribute(
-          "title",
-          "点击启用右键菜单"
-        );
+        el.textContent = "未启用";
+        el.setAttribute("title", "点击启用右键菜单");
+        el.classList.add("state-disabled");
+        el.classList.remove("state-enabled");
       }
 
-      this.elements.contextMenuStatus.classList.add("clickable");
-      this.elements.contextMenuStatus.classList.add("underline");
-      this.elements.contextMenuStatus.classList.remove("disabled");
-      this.elements.contextMenuStatus.setAttribute("aria-disabled", "false");
+      el.classList.add("clickable");
+      el.classList.add("underline");
+      el.classList.remove("disabled");
+      el.setAttribute("aria-disabled", "false");
     } catch (error) {
       const e = toError(error);
-      this.elements.contextMenuStatus.textContent = `检测失败：${e.message}`;
-      this.elements.contextMenuStatus.setAttribute("title", "点击重新检测");
-      this.elements.contextMenuStatus.classList.add("clickable");
-      this.elements.contextMenuStatus.classList.remove("disabled");
-      this.elements.contextMenuStatus.classList.remove("underline");
-      this.elements.contextMenuStatus.setAttribute("aria-disabled", "false");
+      const el = this.elements.contextMenuStatus;
+      el.textContent = `检测失败：${e.message}`;
+      el.setAttribute("title", "点击重新检测");
+      el.classList.add("clickable");
+      el.classList.remove("disabled");
+      el.classList.remove("underline");
+      el.classList.remove("state-enabled", "state-disabled");
+      el.setAttribute("aria-disabled", "false");
     } finally {
       // no-op
     }
@@ -133,6 +191,10 @@ class LocalShareRenderer {
     const toggleContextMenu = async (): Promise<void> => {
       try {
         // 先尝试检测当前状态
+        this.elements.contextMenuStatus.classList.remove(
+          "state-enabled",
+          "state-disabled"
+        );
         this.elements.contextMenuStatus.textContent = "处理中...";
         this.elements.contextMenuStatus.setAttribute("title", "处理中...");
         this.elements.contextMenuStatus.classList.add("disabled");
@@ -144,11 +206,6 @@ class LocalShareRenderer {
 
         await remote._.setContextMenuEnabled(targetEnabled);
         await this.refreshContextMenuStatus();
-
-        this.showNotification(
-          targetEnabled ? "已开启右键菜单" : "已关闭右键菜单",
-          targetEnabled ? "success" : "info"
-        );
       } catch (error) {
         const e = toError(error);
         this.showNotification(`操作失败：${e.message}`, "error");
@@ -165,6 +222,45 @@ class LocalShareRenderer {
       if (evt.key === "Enter" || evt.key === " ") {
         evt.preventDefault();
         void toggleContextMenu();
+      }
+    });
+
+    // 开机自启：点击即切换启用/关闭
+    const toggleAutoLaunch = async (): Promise<void> => {
+      const el = this.elements.autoLaunchStatus;
+
+      try {
+        el.classList.remove("state-enabled", "state-disabled");
+        el.textContent = "处理中...";
+        el.setAttribute("title", "处理中...");
+        el.classList.add("disabled");
+        el.classList.remove("underline");
+        el.setAttribute("aria-disabled", "true");
+
+        const status = await remote._.getAutoLaunchStatus();
+        if (!status.supported) {
+          this.showNotification("当前系统不支持开机自启配置", "info");
+          await this.refreshAutoLaunchStatus();
+          return;
+        }
+
+        const targetEnabled = !status.enabled;
+        await remote._.setAutoLaunchEnabled(targetEnabled);
+        await this.refreshAutoLaunchStatus();
+      } catch (error) {
+        const e = toError(error);
+        this.showNotification(`操作失败：${e.message}`, "error");
+        await this.refreshAutoLaunchStatus();
+      }
+    };
+
+    this.elements.autoLaunchStatus.addEventListener("click", () => {
+      void toggleAutoLaunch();
+    });
+    this.elements.autoLaunchStatus.addEventListener("keydown", (evt) => {
+      if (evt.key === "Enter" || evt.key === " ") {
+        evt.preventDefault();
+        void toggleAutoLaunch();
       }
     });
 

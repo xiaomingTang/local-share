@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, clipboard } from "electron";
+import { app, BrowserWindow, shell, clipboard, Menu, Tray } from "electron";
 import { p } from "./utils/fs-utils";
 import type { WebServer } from "./server/web-server";
 
@@ -16,9 +16,37 @@ class LocalShareApp {
   private mainWindow: BrowserWindow | null = null;
   private webServer: WebServer | null = null;
   private commandLineShare: boolean = false;
+  private tray: Tray | null = null;
+  private isQuitting: boolean = false;
+
+  private getLoginItemSettingsOptions(): { path?: string; args?: string[] } {
+    if (process.platform !== "win32") return {};
+
+    // Windows 下 get/setLoginItemSettings 需要使用一致的 path/args 才能正确读取到
+    // 对应那一条“启动项”。开发态通常是 electron.exe 启动，需要把 app path 作为第一个参数。
+    const path = process.execPath;
+    const args = app.isPackaged
+      ? ["--autostart"]
+      : [app.getAppPath(), "--autostart"];
+
+    return { path, args };
+  }
 
   constructor() {
     this.initializeApp();
+  }
+
+  private isAutoStartLaunch(args: string[] = process.argv): boolean {
+    return args.includes("--autostart");
+  }
+
+  private getShareFolderFromArgs(args: string[]): string | null {
+    // 仅支持：--share=<folder>
+    const inlineArg = args.find((a) => a.startsWith("--share="));
+    if (!inlineArg) return null;
+
+    const value = inlineArg.slice("--share=".length).trim();
+    return value ? value.replace(/^"|"$/g, "") : null;
   }
 
   private async initializeApp() {
@@ -33,31 +61,50 @@ class LocalShareApp {
     }
 
     // 应用生命周期事件
+    app.on("before-quit", () => {
+      this.isQuitting = true;
+    });
+
+    // 常驻后台：窗口关闭不退出；仅托盘“退出”才真正退出
     app.on("window-all-closed", () => {
-      this.stopWebServer();
-      if (process.platform !== "darwin") {
-        app.quit();
+      if (this.isQuitting) {
+        this.stopWebServer();
+        if (process.platform !== "darwin") {
+          app.quit();
+        }
       }
     });
     app.on("activate", () => {
-      if (BrowserWindow.getAllWindows().length === 0) {
-        this.createWindow();
-      }
+      this.showMainWindow();
     });
 
     void this.setupIPC();
 
     await app.whenReady();
-    this.createWindow();
 
-    void this.handleCommandLineShare();
+    this.setupTray();
+
+    // 启动时处理 --share；未带 share 时，根据是否 --autostart 决定是否弹出窗口
+    const handledShare = await this.handleShareArgs(process.argv);
+    if (!handledShare && !this.isAutoStartLaunch(process.argv)) {
+      this.showMainWindow();
+    }
   }
 
-  private createWindow() {
+  private ensureMainWindow(show: boolean = true) {
+    if (this.mainWindow) {
+      if (show) {
+        this.mainWindow.show();
+        this.mainWindow.focus();
+      }
+      return;
+    }
+
     this.mainWindow = new BrowserWindow({
       width: app.isPackaged ? 420 : 1000,
       height: 600,
       resizable: true,
+      show,
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -79,10 +126,70 @@ class LocalShareApp {
     // 隐藏菜单栏
     this.mainWindow.setMenu(null);
 
-    // 关闭主窗口时停止服务
-    this.mainWindow.on("close", () => {
+    this.mainWindow.on("close", (evt) => {
+      if (this.isQuitting) return;
+      evt.preventDefault();
       this.stopWebServer();
+      this.mainWindow?.hide();
     });
+  }
+
+  private showMainWindow() {
+    this.ensureMainWindow(true);
+  }
+
+  private setupTray() {
+    if (this.tray) return;
+
+    const fs = require("fs") as typeof import("fs");
+    const iconPath = p("assets/tray-icon.png");
+    if (!fs.existsSync(iconPath)) {
+      console.warn("托盘图标不存在：", iconPath);
+      return;
+    }
+
+    this.tray = new Tray(iconPath);
+    this.tray.setToolTip("LocalShare");
+
+    const contextMenu = Menu.buildFromTemplate([
+      {
+        label: "显示窗口",
+        click: () => this.showMainWindow(),
+      },
+      {
+        label: "隐藏窗口",
+        click: () => this.mainWindow?.hide(),
+      },
+      { type: "separator" },
+      {
+        label: "退出",
+        click: () => {
+          this.isQuitting = true;
+          this.stopWebServer();
+          app.quit();
+        },
+      },
+    ]);
+    this.tray.setContextMenu(contextMenu);
+
+    this.tray.on("click", () => {
+      // 单击托盘：显示/聚焦窗口
+      this.showMainWindow();
+    });
+  }
+
+  private updateTrayStatus(isServerRunning: boolean) {
+    if (!this.tray) return;
+    const fs = require("fs") as typeof import("fs");
+    const iconPath = isServerRunning
+      ? p("assets/tray-icon-active.png")
+      : p("assets/tray-icon.png");
+    if (fs.existsSync(iconPath)) {
+      this.tray.setImage(iconPath);
+    }
+    this.tray.setToolTip(
+      isServerRunning ? "LocalShare - 服务运行中" : "LocalShare"
+    );
   }
 
   private async setupIPC() {
@@ -116,6 +223,48 @@ class LocalShareApp {
       return { exists: await checkContextMenuExists() };
     });
 
+    // 开机自启（Windows）：查询与开关
+    remote.register("getAutoLaunchStatus", async () => {
+      if (process.platform !== "win32" && process.platform !== "darwin") {
+        return { supported: false, enabled: false };
+      }
+
+      if (process.platform === "win32") {
+        const settings = app.getLoginItemSettings(
+          this.getLoginItemSettingsOptions()
+        );
+        return { supported: true, enabled: !!settings.openAtLogin };
+      }
+
+      const settings = app.getLoginItemSettings();
+      return { supported: true, enabled: !!settings.openAtLogin };
+    });
+
+    remote.register("setAutoLaunchEnabled", async (enabled: boolean) => {
+      if (process.platform !== "win32" && process.platform !== "darwin") {
+        return { supported: false, enabled: false };
+      }
+
+      if (process.platform === "win32") {
+        app.setLoginItemSettings({
+          openAtLogin: enabled,
+          ...this.getLoginItemSettingsOptions(),
+        });
+      } else {
+        // macOS：尽量静默
+        app.setLoginItemSettings({
+          openAtLogin: enabled,
+          openAsHidden: true,
+        });
+      }
+
+      const settings =
+        process.platform === "win32"
+          ? app.getLoginItemSettings(this.getLoginItemSettingsOptions())
+          : app.getLoginItemSettings();
+      return { supported: true, enabled: !!settings.openAtLogin };
+    });
+
     // 开始文件夹共享
     remote.register("shareFolder", async (folderPath: string) => {
       if (!this.webServer) {
@@ -124,6 +273,8 @@ class LocalShareApp {
       }
 
       const serverInfo = await this.webServer.startServer(folderPath);
+
+      this.updateTrayStatus(true);
 
       return serverInfo;
     });
@@ -180,24 +331,22 @@ class LocalShareApp {
     if (this.webServer) {
       this.webServer.stopServer();
       this.webServer = null;
+      this.updateTrayStatus(false);
     }
   }
 
-  // 处理从命令行传入的 --share <folderPath>
-  private async handleCommandLineShare() {
-    const args = process.argv;
-    const shareIndex = args.indexOf("--share");
-    if (shareIndex === -1 || !args[shareIndex + 1]) {
-      return;
-    }
+  // 处理 argv 里的 --share=<folderPath>，返回是否处理了 share
+  private async handleShareArgs(args: string[]): Promise<boolean> {
+    const folderPath = this.getShareFolderFromArgs(args);
+    if (!folderPath) return false;
 
-    // 标记应用是通过命令行 --share 启动的
     this.commandLineShare = true;
-
-    const folderPath = args[shareIndex + 1];
 
     try {
       const remote = await getRemote();
+
+      // 确保窗口可用并前置（需要显示二维码/地址）
+      this.showMainWindow();
 
       if (!this.webServer) {
         const { WebServer } = await import("./server/web-server");
@@ -206,24 +355,49 @@ class LocalShareApp {
 
       const serverInfo = await this.webServer.startServer(folderPath);
 
-      // 将主窗口显示到前台，方便查看二维码
-      if (this.mainWindow) {
-        this.mainWindow.show();
-        this.mainWindow.focus();
-      }
+      this.updateTrayStatus(true);
 
-      // 发送状态到渲染进程（若需要立即更新）
+      // 发送状态到渲染进程（窗口可能仍在加载）
       if (this.mainWindow) {
-        this.mainWindow.webContents.send("server-started", serverInfo);
-        remote._.serverStarted(serverInfo, {
-          targetDeviceId: this.mainWindow.webContents.id.toString(),
-        });
+        const wc = this.mainWindow.webContents;
+        const send = () => {
+          wc.send("server-started", serverInfo);
+          remote._.serverStarted(serverInfo, {
+            targetDeviceId: wc.id.toString(),
+          });
+        };
+
+        if (wc.isLoading()) {
+          wc.once("did-finish-load", send);
+        } else {
+          send();
+        }
       }
     } catch (error) {
       console.error("命令行分享启动失败:", error);
+      return true;
+    }
+
+    return true;
+  }
+
+  public async onSecondInstance(argv: string[]) {
+    await app.whenReady();
+    this.setupTray();
+    const handled = await this.handleShareArgs(argv);
+    if (!handled) {
+      this.showMainWindow();
     }
   }
 }
 
-// 启动应用
-new LocalShareApp();
+// 单实例：第二次启动转发到已有实例
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  app.quit();
+} else {
+  const localShareApp = new LocalShareApp();
+  app.on("second-instance", (_event, argv) => {
+    void localShareApp.onSecondInstance(argv);
+  });
+}
