@@ -314,6 +314,10 @@ class LocalShareRenderer {
     remote.register("serverStarted", async (serverInfo) => {
       this.showServerStatus(serverInfo);
     });
+
+    remote.register("serverStopped", async () => {
+      this.hideServerStatus();
+    });
   }
 
   private showServerStatus(serverInfo: ServerInfo): void {

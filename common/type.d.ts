@@ -31,5 +31,6 @@ declare global {
 
   type FuncsFromRenderer = {
     serverStarted: (serverInfo: ServerInfo) => Promise<void>;
+    serverStopped: (data?: void) => Promise<void>;
   };
 }

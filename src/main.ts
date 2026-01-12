@@ -129,9 +129,13 @@ class LocalShareApp {
     this.mainWindow.on("close", (evt) => {
       if (this.isQuitting) return;
       evt.preventDefault();
-      this.stopWebServer();
-      this.mainWindow?.hide();
+      void this.handleWindowClose();
     });
+  }
+
+  private async handleWindowClose(): Promise<void> {
+    await this.stopWebServer();
+    this.mainWindow?.hide();
   }
 
   private showMainWindow() {
@@ -281,7 +285,7 @@ class LocalShareApp {
 
     // 停止服务器
     remote.register("stopServer", async () => {
-      this.stopWebServer();
+      await this.stopWebServer();
     });
 
     // 在资源管理器中打开共享文件夹
@@ -327,11 +331,37 @@ class LocalShareApp {
     }));
   }
 
-  private stopWebServer() {
-    if (this.webServer) {
-      this.webServer.stopServer();
-      this.webServer = null;
-      this.updateTrayStatus(false);
+  private async stopWebServer(): Promise<void> {
+    const server = this.webServer;
+    if (!server) return;
+
+    // 先置空，避免重入重复 stop
+    this.webServer = null;
+
+    await server.stopServer();
+    this.updateTrayStatus(false);
+    await this.notifyRendererServerStopped();
+  }
+
+  private async notifyRendererServerStopped(): Promise<void> {
+    try {
+      if (!this.mainWindow) return;
+      const wc = this.mainWindow.webContents;
+      const remote = await getRemote();
+
+      const send = () => {
+        remote._.serverStopped(undefined, {
+          targetDeviceId: wc.id.toString(),
+        });
+      };
+
+      if (wc.isLoading()) {
+        wc.once("did-finish-load", send);
+      } else {
+        send();
+      }
+    } catch (error) {
+      console.warn("通知渲染进程服务已停止失败:", error);
     }
   }
 
