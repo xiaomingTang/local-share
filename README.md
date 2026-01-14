@@ -1,3 +1,7 @@
+# Deprecated
+
+考虑到包体积和冷启动速度，迁移到了 golang，见 [local-share-golang](https://github.com/xiaomingTang/local-share-golang)
+
 # LocalShare
 
 一个基于 Electron + Node.js + TypeScript 的本地文件共享桌面应用。
